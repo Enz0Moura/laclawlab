@@ -24,10 +24,22 @@ The menu appears when the simulator starts. Click an option or press **1–4**:
 
 | Key | Mode | Time | Behavior |
 | --- | --- | --- | --- |
-| `1` | Sandbox | Unlimited | Gentle bounces for practice |
-| `2` | Easy (Facil) | 4 minutes | Light bounces; aliens settle faster |
-| `3` | Medium (Medio) | 3 minutes | Moderate bounces |
-| `4` | Hard (Dificil) | 2 minutes | Strong bounces; aliens take longer to settle |
+| `1` | Sandbox | Unlimited | Small position variation and gentle bounces |
+| `2` | Easy (Facil) | 4 minutes | Small position variation and light bounces |
+| `3` | Medium (Medio) | 3 minutes | More varied angles and distances; moderate bounces |
+| `4` | Hard (Dificil) | 2 minutes | Widest position variation; strong, lasting bounces |
+
+Alien positions are randomized for every new game and reset. Colors also swap
+places: the blue alien, for example, is no longer always in the center. Sandbox
+and Easy keep a constant distance from the base with small angular variation.
+Medium offers three possible distances; Hard offers seven and a wider angular
+range, requiring adjustments to the shoulder, elbow and wrist too.
+
+All aliens start upright, supported by the floor, without overlaps and clear of
+the tray and obstacles. Every layout is checked for an approach, capture, lift
+and transport route. Approach by rotating the base with the claw raised, adjusting
+the elbow and wrist, then lowering the shoulder. After capturing, lift the arm
+before rotating toward the tray. Use `[` and `]` for fine 1° alignment.
 
 During gameplay, **1–4** select joints again. The header shows the mode and
 remaining time; the timer turns red below 30 seconds. **P**, **Esc** or the
@@ -36,13 +48,15 @@ bounces freeze. The pause menu offers three options:
 
 - **Continuar** (`P` or `Esc`): resumes the same remaining time, positions,
   velocities, selection, camera, claw opening, held prize and score. It does not create a new game.
-- **Resetar partida** (`R`): restarts the current mode, including its timer and camera.
+- **Resetar partida** (`R`): restarts the current mode, including its timer and camera,
+  and randomizes the aliens' positions again.
 - **Voltar aos modos** (`M`, while paused): ends the current game and opens mode
   selection. Choosing a mode starts a new game.
 
 The header button changes to **P CONTINUAR** while paused. Gameplay controls behind
 the overlay are blocked; to move with the arrow keys or drag the camera again,
 start a new gesture after continuing. Help also freezes the timer.
+Pausing, continuing and opening or closing help do not reroll the positions.
 **R** remains available to restart during gameplay.
 Delivering all three aliens or running out of time stops the round and displays
 the result. Use **R** to retry or open pause to return to mode selection. Continuing
@@ -200,7 +214,8 @@ limits. This mode is useful for studying the simulation and is not required to p
   it. Passing over it while held does not count. Landing partly on the edge
   or on another prize does not count either.
 - Delivery is irreversible until reset. Each prize increments the count once.
-- `R` restores prizes, angles, selection, count, camera, active joint and the current mode's timer.
+- `R` generates new spawns and restores prizes, angles, selection, count, camera,
+  active joint and the current mode's timer.
   Your current help and debug visibility preferences are preserved.
 
 ## 6. Troubleshooting
@@ -245,7 +260,12 @@ of parts; there is no transparent glass or cast shadows.
 Collisions use conservative boxes and do not rotate aliens.
 
 Tests cover delivery of all three aliens in every mode, bounces, collisions
-between prizes, timeout, reset and allocation failures. The graphical test
+between prizes, timeout, reset and allocation failures. They also check 24 seeds
+per mode, covering all six collection orders, floor support, absence of overlaps
+and increased variation with difficulty. The generator uses forward kinematics
+poses, bounded retries and a safe fallback layout that is also validated.
+`machine_create_seeded(mode, seed)` reproduces a layout in tests; normal gameplay
+chooses a new seed automatically. The graphical test
 compares state before and after pausing, including while holding a prize and
 with moving aliens, and verifies returning to modes and resetting. Run the
 logic and memory tests with `make test` and `make sanitize`.

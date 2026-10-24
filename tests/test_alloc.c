@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void *__real_malloc(size_t size);
 void *__real_calloc(size_t count, size_t size);
@@ -62,11 +63,19 @@ int main(void) {
     m->time_remaining = 42;
     SceneNode *root = m->root;
     m->selected = 1;
+    PrizeMachine saved;
+    memcpy(&saved, m, sizeof(saved));
+    Mat4 positions[PRIZE_COUNT];
+    for (int p = 0; p < PRIZE_COUNT; ++p)
+        positions[p] = m->prizes[p].node->local;
     size_t baseline = live;
     for (size_t i = 1; i <= total; ++i) {
         calls = 0;
         fail_at = i;
         CHECK(!machine_reset(m));
+        CHECK(!memcmp(&saved, m, sizeof(saved)));
+        for (int p = 0; p < PRIZE_COUNT; ++p)
+            CHECK(!memcmp(&positions[p], &m->prizes[p].node->local, sizeof(Mat4)));
         CHECK(m->root == root);
         CHECK(m->selected == 1);
         CHECK(m->mode == MODE_HARD && m->time_remaining == 42);
@@ -78,6 +87,7 @@ int main(void) {
         calls = 0;
         fail_at = i;
         CHECK(!machine_start(m, MODE_EASY));
+        CHECK(!memcmp(&saved, m, sizeof(saved)));
         CHECK(m->root == root && m->selected == 1);
         CHECK(m->mode == MODE_HARD && m->time_remaining == 42);
         CHECK(live == baseline);

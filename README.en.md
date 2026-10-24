@@ -5,7 +5,8 @@
 A graphics library using OOP in **C11** and a 3D claw machine simulator built
 with **OpenGL and freeglut**. The arm has a base, shoulder, elbow, wrist and
 two articulated fingers. Control the joints, capture three aliens and release
-them into the delivery tray. Capture is deterministic; the selected mode sets the time limit and bounce strength.
+them into the delivery tray. Capture is deterministic; the selected mode sets the
+time limit, bounce strength and variation in the aliens' starting positions.
 
 The visuals are inspired by the **Pizza Planet claw machine from Toy Story**.
 
@@ -46,12 +47,17 @@ right-drag looks around and scrolling moves forward or backward. **Home** resets
 
 ## Game modes
 
-| Mode | Time | Collisions |
-| --- | --- | --- |
-| Sandbox | Unlimited | Gentle bounces for practice |
-| Easy (Fácil) | 4 minutes | Light bounces and stronger damping |
-| Medium (Médio) | 3 minutes | Moderate bounces |
-| Hard (Difícil) | 2 minutes | Strong bounces and weaker damping |
+| Mode | Time | Starting positions | Collisions |
+| --- | --- | --- | --- |
+| Sandbox | Unlimited | Small angular variation, constant distance | Gentle bounces for practice |
+| Easy (Fácil) | 4 minutes | Small angular variation, constant distance | Light bounces and stronger damping |
+| Medium (Médio) | 3 minutes | Wider angular variation and three possible distances | Moderate bounces |
+| Hard (Difícil) | 2 minutes | Widest angular variation and seven possible distances | Strong bounces and weaker damping |
+
+Every new game or reset randomizes positions and shuffles colors among them.
+Aliens start supported by the floor, separated from each other and clear of the
+tray and obstacles. Each layout is checked for a route to approach, capture, lift
+and transport every alien. Pausing and continuing preserves the current layout.
 
 Released aliens bounce off the floor, cabinet and each other. Delivery counts only
 once an alien settles directly on the tray, entirely inside it. **P**, **Esc** or
@@ -63,7 +69,7 @@ during gameplay. Help freezes the timer. Victory or timeout ends the round.
 
 ## Documentation
 
-See the [user manual and first delivery walkthrough](docs/USER_MANUAL.md).
+See the [user manual](docs/USER_MANUAL.md).
 
 Validated on CachyOS Linux, freeglut 3.8.0 and OpenGL 4.6 compatibility/NVIDIA.
 Uses conservative AABBs, gravity, bouncing collisions and simplified friction in

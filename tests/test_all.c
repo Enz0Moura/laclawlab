@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static int checks;
 #define CHECK(condition)                                                                           \
@@ -162,9 +163,10 @@ static void test_mesh_contract(void) {
     machine_destroy(m);
 }
 static void pickup(PrizeMachine *m, int p) {
-    target(m, 0, MACHINE_CONFIG.prize_yaw[p]);
-    target(m, 3, -50);
-    target(m, 1, -45);
+    target(m, 0, m->prizes[p].pickup_pose[0]);
+    target(m, 2, m->prizes[p].pickup_pose[2]);
+    target(m, 3, m->prizes[p].pickup_pose[3]);
+    target(m, 1, m->prizes[p].pickup_pose[1]);
     CHECK(machine_capture_candidate(m, NULL) == p);
     Vec3 before = mat4_point(m->prizes[p].node->world, vec3(0, 0, 0));
     machine_close(m);
@@ -174,6 +176,7 @@ static void pickup(PrizeMachine *m, int p) {
     check_vec(mat4_point(m->prizes[p].node->world, vec3(0, 0, 0)), before);
     target(m, 1, -25);
     target(m, 3, -70);
+    target(m, 2, -85);
     Mat4 expected = mat4_mul(m->arm.grip->world, m->prizes[p].relative_to_grip);
     for (int i = 0; i < 16; ++i)
         CHECK(near(expected.m[i], m->prizes[p].node->world.m[i]));
@@ -269,8 +272,10 @@ static void test_limits_collision_time(void) {
     CHECK(m->arm.angle[1] > -85);
     CHECK(machine_pose_valid(m));
     /* The back wall occludes a ray from outside the cabinet. */
-    Vec3 prize = mat4_point(m->prizes[2].node->world, vec3(0, 0, 0));
-    CHECK(machine_pick(m, (Ray){v3_add(prize, vec3(0, 0, -5)), vec3(0, 0, 1)}) == -1);
+    m->prizes[2].node->local =
+        mat4_mul(mat4_translate(vec3(1, .25f, -2)), mat4_scale(vec3(.5f, .5f, .5f)));
+    scene_update(m->prizes[2].node, mat4_identity());
+    CHECK(machine_pick(m, (Ray){{1, .25f, -7}, {0, 0, 1}}) == -1);
     for (int i = 0; i < 100; ++i) {
         CHECK(machine_reset(m));
         CHECK(machine_pose_valid(m));
@@ -303,8 +308,10 @@ static void test_occlusion_and_cargo(void) {
         CHECK(!aabb_overlap(scene_bounds(barrier), scene_bounds(m->arm.parts[i]), 0));
     CHECK(!machine_pose_valid(m)); /* Only the carried prize hits this obstacle. */
     CHECK(machine_reset(m));
-    target(m, 3, -50);
-    target(m, 1, -45);
+    target(m, 0, m->prizes[1].pickup_pose[0]);
+    target(m, 2, m->prizes[1].pickup_pose[2]);
+    target(m, 3, m->prizes[1].pickup_pose[3]);
+    target(m, 1, m->prizes[1].pickup_pose[1]);
     CHECK(machine_capture_candidate(m, NULL) == 1);
     m->prizes[1].node->local.m[12] += .06f;
     scene_update(m->prizes[1].node, mat4_identity());
@@ -452,34 +459,116 @@ static void timed_target(PrizeMachine *m, int joint, float angle) {
     wait_for_arm(m);
     CHECK(near(m->arm.angle[joint], angle));
 }
-static void test_timed_routes(void) {
+static void test_random_spawns(void) {
+    const int orders[][PRIZE_COUNT] = {{0, 1, 2}, {0, 2, 1}, {1, 0, 2},
+                                       {1, 2, 0}, {2, 0, 1}, {2, 1, 0}};
+    float previous_radius_range = -1, previous_yaw_range = -1;
+    CHECK(!machine_create_seeded((GameMode)-1, 0));
+    CHECK(!machine_create_seeded(MODE_COUNT, 0));
+    for (int mode = MODE_SANDBOX; mode < MODE_COUNT; ++mode) {
+        float radius_min = 10, radius_max = 0, yaw_min = 180, yaw_max = -180;
+        bool color_slots[PRIZE_COUNT][PRIZE_COUNT] = {{false}};
+        Mat4 previous[PRIZE_COUNT];
+        for (uint32_t seed = 0; seed < 24; ++seed) {
+            PrizeMachine *m = machine_create_seeded((GameMode)mode, seed);
+            CHECK(m);
+            CHECK(m->spawn_seed == seed && m->mode == (GameMode)mode);
+            CHECK(m->time_remaining == GAME_MODES[mode].time_limit);
+            CHECK(m->blocked_moves == 0 && m->bounces == 0 && m->held == -1);
+            CHECK(m->round == ROUND_PLAYING && machine_pose_valid(m));
+            bool changed = false;
+            for (int p = 0; p < PRIZE_COUNT; ++p) {
+                const Prize *prize = &m->prizes[p];
+                CHECK(prize->state == PRIZE_AVAILABLE);
+                Vec3 center = mat4_point(prize->node->world, vec3(0, 0, 0));
+                float radius = hypotf(center.x, center.z);
+                radius_min = fminf(radius_min, radius);
+                radius_max = fmaxf(radius_max, radius);
+                float yaw = prize->pickup_pose[0];
+                yaw_min = fminf(yaw_min, yaw);
+                yaw_max = fmaxf(yaw_max, yaw);
+                color_slots[p][yaw < -20 ? 0 : yaw > 20 ? 2 : 1] = true;
+                AABB box = scene_bounds(prize->node), space = MACHINE_CONFIG.workspace;
+                CHECK(near(box.min.y, 0));
+                CHECK(box.min.x >= space.min.x && box.max.x <= space.max.x);
+                CHECK(box.min.z >= space.min.z && box.max.z <= space.max.z);
+                for (int corner = 0; corner < 4; ++corner) {
+                    float x = ((corner & 1 ? box.max.x : box.min.x) - 1) / 3;
+                    float z = (corner & 2 ? box.max.z : box.min.z) / 3.6f;
+                    CHECK(x * x + z * z < 1);
+                }
+                for (int s = 0; s < m->solid_count; ++s)
+                    CHECK(!aabb_overlap(box, scene_bounds(m->solids[s].node), 0));
+                for (int other = 0; other < p; ++other)
+                    CHECK(!aabb_overlap(box, scene_bounds(m->prizes[other].node), 0));
+                if (seed && memcmp(&previous[p], &prize->node->local, sizeof(Mat4)))
+                    changed = true;
+                previous[p] = prize->node->local;
+            }
+            if (seed)
+                CHECK(changed);
+            if (seed == 0 || seed == 23) {
+                PrizeMachine *copy = machine_create_seeded((GameMode)mode, seed);
+                CHECK(copy);
+                for (int p = 0; p < PRIZE_COUNT; ++p)
+                    CHECK(!memcmp(&m->prizes[p].node->local, &copy->prizes[p].node->local,
+                                  sizeof(Mat4)));
+                machine_destroy(copy);
+            }
+            /* Simulate actual controls, collisions, capture, falling and delivery.
+             * Each mode exercises every collection order with several layouts. */
+            for (int collected = 0; collected < PRIZE_COUNT; ++collected) {
+                int p = orders[seed % 6][collected];
+                timed_target(m, 0, m->prizes[p].pickup_pose[0]);
+                timed_target(m, 2, m->prizes[p].pickup_pose[2]);
+                timed_target(m, 3, m->prizes[p].pickup_pose[3]);
+                timed_target(m, 1, m->prizes[p].pickup_pose[1]);
+                machine_close(m);
+                wait_for_arm(m);
+                CHECK(m->held == p);
+                timed_target(m, 1, -25);
+                timed_target(m, 3, -70);
+                timed_target(m, 2, -85);
+                timed_target(m, 0, MACHINE_CONFIG.drop_yaw[p]);
+                machine_open(m);
+                for (int i = 0;
+                     i < 2400 && m->prizes[p].state != PRIZE_DELIVERED && m->round == ROUND_PLAYING;
+                     ++i)
+                    machine_update(m, 1.0f / 120);
+                CHECK(m->prizes[p].state == PRIZE_DELIVERED);
+                CHECK(m->delivered == collected + 1);
+                if (mode != MODE_SANDBOX)
+                    CHECK(m->time_remaining > 0);
+            }
+            CHECK(m->round == ROUND_WON && m->blocked_moves == 0 && m->bounces > 0);
+            float time = m->time_remaining;
+            advance(m, 2);
+            CHECK(m->time_remaining == time && m->delivered == PRIZE_COUNT);
+            machine_destroy(m);
+        }
+        for (int p = 0; p < PRIZE_COUNT; ++p)
+            for (int slot = 0; slot < PRIZE_COUNT; ++slot)
+                CHECK(color_slots[p][slot]);
+        float radius_range = radius_max - radius_min, yaw_range = yaw_max - yaw_min;
+        if (mode >= MODE_MEDIUM) {
+            CHECK(radius_range > previous_radius_range + .15f);
+            CHECK(yaw_range > previous_yaw_range + 5);
+        }
+        previous_radius_range = radius_range;
+        previous_yaw_range = yaw_range;
+    }
     PrizeMachine *m = machine_create();
     CHECK(m);
-    for (int mode = MODE_EASY; mode < MODE_COUNT; ++mode) {
+    for (int mode = MODE_SANDBOX; mode < MODE_COUNT; ++mode) {
         CHECK(machine_start(m, (GameMode)mode));
-        for (int p = 0; p < PRIZE_COUNT; ++p) {
-            timed_target(m, 0, MACHINE_CONFIG.prize_yaw[p]);
-            timed_target(m, 3, -50);
-            timed_target(m, 1, -45);
-            machine_close(m);
-            wait_for_arm(m);
-            CHECK(m->held == p);
-            timed_target(m, 1, -25);
-            timed_target(m, 3, -70);
-            timed_target(m, 0, MACHINE_CONFIG.drop_yaw[p]);
-            machine_open(m);
-            for (int i = 0;
-                 i < 2400 && m->prizes[p].state != PRIZE_DELIVERED && m->round == ROUND_PLAYING;
-                 ++i)
-                machine_update(m, 1.0f / 120);
-            CHECK(m->prizes[p].state == PRIZE_DELIVERED);
-            CHECK(m->delivered == p + 1);
-            CHECK(m->time_remaining > 0);
-        }
-        CHECK(m->round == ROUND_WON && m->blocked_moves == 0 && m->bounces > 0);
-        float time = m->time_remaining;
-        advance(m, 2);
-        CHECK(m->time_remaining == time && m->delivered == PRIZE_COUNT);
+        uint32_t seed = m->spawn_seed;
+        CHECK(machine_reset(m));
+        CHECK(m->spawn_seed != seed && m->mode == (GameMode)mode);
+        PrizeMachine *replay = machine_create_seeded((GameMode)mode, m->spawn_seed);
+        CHECK(replay);
+        for (int p = 0; p < PRIZE_COUNT; ++p)
+            CHECK(!memcmp(&replay->prizes[p].node->local, &m->prizes[p].node->local, sizeof(Mat4)));
+        machine_destroy(replay);
     }
     machine_destroy(m);
 }
@@ -494,9 +583,9 @@ int main(void) {
     test_modes_and_clock();
     test_bouncing_prizes();
     test_release_velocity();
-    test_timed_routes();
-    printf(
-        "PASS: %d checks (math, camera, ownership, FK, picking, collisions, 3 deliveries, reset)\n",
-        checks);
+    test_random_spawns();
+    printf("PASS: %d checks (math, camera, ownership, FK, picking, collisions, randomized spawns, "
+           "96 seeded rounds, all collection orders, reset)\n",
+           checks);
     return EXIT_SUCCESS;
 }
