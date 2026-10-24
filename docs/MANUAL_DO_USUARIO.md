@@ -20,10 +20,22 @@ O menu aparece ao abrir o simulador. Clique numa opção ou pressione **1–4**:
 
 | Tecla | Modo | Tempo | Comportamento |
 | --- | --- | --- | --- |
-| `1` | Sandbox | Sem limite | Quiques suaves para praticar |
-| `2` | Fácil | 4 minutos | Quiques leves; aliens param mais rápido |
-| `3` | Médio | 3 minutos | Quiques moderados |
-| `4` | Difícil | 2 minutos | Quiques fortes; aliens demoram mais para parar |
+| `1` | Sandbox | Sem limite | Pequena variação de posição e quiques suaves |
+| `2` | Fácil | 4 minutos | Pequena variação de posição e quiques leves |
+| `3` | Médio | 3 minutos | Ângulos e distâncias mais variados; quiques moderados |
+| `4` | Difícil | 2 minutos | Maior variação de posição; quiques fortes e demorados |
+
+As posições dos aliens são sorteadas a cada nova partida e reset. As cores também
+trocam de lugar: o alien azul, por exemplo, não fica sempre no centro. No sandbox
+e no fácil, a distância até a base é constante e o ângulo varia pouco. No médio,
+há três distâncias possíveis; no difícil, sete distâncias e uma faixa angular
+maior exigem ajustar também ombro, cotovelo e punho.
+
+Todos começam em pé, apoiados no piso, sem sobreposição, longe da bandeja e dos
+obstáculos. Cada layout passa por uma verificação da rota de aproximação, captura,
+retirada e transporte. Para se aproximar, gire a base com a garra elevada, ajuste
+cotovelo e punho e então abaixe o ombro. Depois de capturar, eleve o braço antes
+de girar rumo à bandeja. Use `[` e `]` para o alinhamento fino de 1°.
 
 Durante a partida, **1–4** voltam a selecionar as juntas. O topo mostra o modo
 e o tempo restante; abaixo de 30 segundos, o cronômetro fica vermelho.
@@ -32,13 +44,15 @@ braço e os quiques dos aliens ficam congelados. A pausa oferece três opções:
 
 - **Continuar** (`P` ou `Esc`): retoma o mesmo tempo restante, posições, velocidades,
   seleção, câmera, abertura da garra, prêmio capturado e pontuação. Não cria outra partida.
-- **Resetar partida** (`R`): reinicia o modo atual, incluindo cronômetro e câmera.
+- **Resetar partida** (`R`): reinicia o modo atual, incluindo cronômetro e câmera,
+  e sorteia novas posições para os aliens.
 - **Voltar aos modos** (`M`, dentro da pausa): encerra a partida atual e abre a tela
   de seleção. Escolher um modo começa uma nova partida.
 
 O botão do topo muda para **P CONTINUAR** enquanto a pausa está aberta. Os controles
 do jogo atrás dela ficam bloqueados; para mover de novo com setas ou arrastar a
 câmera, comece um novo gesto depois de continuar. A ajuda também congela o tempo.
+Pausar, continuar e abrir ou fechar a ajuda não refazem o sorteio das posições.
 **R** continua disponível para reiniciar durante o jogo.
 Ao entregar os três aliens ou esgotar o tempo, a rodada para e mostra o resultado.
 Use **R** para tentar novamente ou abra a pausa para voltar aos modos. Continuar
@@ -190,7 +204,8 @@ cabine. Esse modo ajuda a estudar e não é necessário para jogar.
   inteiramente nela. Passar por cima ainda preso não conta. Pousar parcialmente
   na borda ou em outro prêmio também não conta.
 - A entrega é irreversível até reiniciar. Cada prêmio incrementa uma vez.
-- `R` restaura prêmios, ângulos, seleção, contagem, câmera, junta ativa e tempo do modo atual.
+- `R` sorteia novos spawns e restaura prêmios, ângulos, seleção, contagem, câmera,
+  junta ativa e tempo do modo atual.
   As opções de mostrar ajuda e depuração conservam sua preferência atual.
 
 ## 6. Problemas comuns
@@ -235,6 +250,11 @@ As colisões usam caixas conservadoras e não provocam rotação dos aliens.
 
 Os testes verificam a entrega dos três aliens em todos os modos, quiques,
 colisões entre prêmios, tempo esgotado, reinício e falhas de alocação.
+Também verificam 24 sementes por modo, cobrindo as seis ordens de coleta,
+o apoio no piso, a ausência de sobreposição e o aumento da variação por dificuldade.
+O gerador usa poses de cinemática direta, tentativas limitadas e um layout seguro
+de reserva, também validado. `machine_create_seeded(mode, seed)` permite reproduzir
+um layout nos testes; a partida normal escolhe uma nova semente automaticamente.
 O teste gráfico compara o estado antes e depois da pausa, inclusive durante
 uma captura e com aliens em movimento, e verifica o retorno aos modos e o reset.
 Execute os testes de lógica e memória com `make test` e `make sanitize`.
