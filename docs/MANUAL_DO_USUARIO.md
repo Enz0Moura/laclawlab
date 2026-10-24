@@ -7,13 +7,30 @@
 ## 1. Objetivo
 
 Pegue os três prêmios — Coral, Azul e Amarelo — com o braço articulado e solte-os
-na bandeja verde. Cada prêmio conta uma vez, depois de chegar à bandeja solto.
-Ao chegar a **3/3**, a coleção está completa. Não há tempo limite, sorteio de
-captura ou chance de o prêmio escapar durante o transporte.
+na bandeja verde. Cada prêmio conta uma vez, depois de parar diretamente na bandeja solto.
+Ao chegar a **3/3**, a coleção está completa. O sandbox não tem tempo limite;
+os desafios têm cronômetro. A captura não depende de sorte e o prêmio não escapa enquanto preso.
 
 O jogador controla os ângulos das juntas. Clicar num prêmio apenas o destaca;
-o braço não se move automaticamente até ele. O tutorial da seção 5 oferece
-uma sequência de ângulos já verificada.
+o braço não se move automaticamente até ele.
+
+### Escolher um modo
+
+O menu aparece ao abrir o simulador. Clique numa opção ou pressione **1–4**:
+
+| Tecla | Modo | Tempo | Comportamento |
+| --- | --- | --- | --- |
+| `1` | Sandbox | Sem limite | Quiques suaves para praticar |
+| `2` | Fácil | 4 minutos | Quiques leves; aliens param mais rápido |
+| `3` | Médio | 3 minutos | Quiques moderados |
+| `4` | Difícil | 2 minutos | Quiques fortes; aliens demoram mais para parar |
+
+Durante a partida, **1–4** voltam a selecionar as juntas. O topo mostra o modo
+e o tempo restante; abaixo de 30 segundos, o cronômetro fica vermelho.
+**M** ou **M MODOS** abre o menu. Escolher um modo sempre começa uma nova partida.
+Menu e ajuda pausam a simulação e o tempo. **R** reinicia o modo atual e seu cronômetro.
+Ao entregar os três aliens ou esgotar o tempo, a rodada para e mostra o resultado.
+Use **R** para tentar novamente, **M** para escolher outro modo ou **Esc** para sair.
 
 ## 2. Preparação e execução
 
@@ -72,6 +89,7 @@ pai. Nesse exemplo, as setas controlam a câmera, `+`/`-` controlam o zoom e
 | Ajuda | `H`, `F1` ou botão **H AJUDA** |
 | Visualização de depuração | `D` |
 | Reiniciar a cena e a câmera | `R` ou botão **R REINICIAR** |
+| Abrir o menu de modos | `M` ou botão **M MODOS** |
 | Sair | `Esc` ou fechar a janela |
 
 As letras funcionam em maiúsculas e minúsculas. Para os incrementos de 5° e 1°,
@@ -94,7 +112,7 @@ parte externa do foguete é decorativa. A frente aberta permite ver o braço.
 destacada na coleção. Clicar num espaço vazio ou numa superfície que bloqueia
 um prêmio limpa a seleção. O destaque não dá alcance extra à garra.
 
-**Tripulação:** mostra a contagem e os estados `Disponivel`, `Na garra`, `Em queda`
+**Tripulação:** mostra a contagem e os estados `Disponivel`, `Na garra`, `Em movimento`
 ou `Entregue`. Um prêmio entregue permanece visível na bandeja, mas não pode ser
 capturado novamente. Seus rótulos na cena desaparecem para não encobrir os demais.
 
@@ -140,14 +158,15 @@ cabine. Esse modo ajuda a estudar e não é necessário para jogar.
   permitem olhar, mas continuam sendo limites da área de jogo.
 - Algumas caixas são maiores que a forma visível quando as peças estão
   inclinadas. Pode haver bloqueio um pouco antes do contato aparente.
-- Abrir solta o prêmio na posição atual; ele cai verticalmente e mantém a
-  orientação, sem quique ou rolamento. Fora da bandeja, fica disponível no
-  piso ou em outro apoio. Ele não ganha pontos por isso.
-- Para contar, o prêmio deve pousar diretamente sobre a bandeja e caber
+- Abrir solta o prêmio na posição atual, com a velocidade do braço. Ele mantém
+  a orientação, cai sob gravidade e quica ao colidir com piso, cabine, braço
+  e outros aliens. A dificuldade controla a força do quique e o amortecimento.
+  Espere o estado `Disponivel` para recapturar um alien em movimento.
+- Para contar, o prêmio deve parar diretamente sobre a bandeja e caber
   inteiramente nela. Passar por cima ainda preso não conta. Pousar parcialmente
   na borda ou em outro prêmio também não conta.
 - A entrega é irreversível até reiniciar. Cada prêmio incrementa uma vez.
-- `R` restaura prêmios, ângulos, seleção, contagem, câmera e junta ativa.
+- `R` restaura prêmios, ângulos, seleção, contagem, câmera, junta ativa e tempo do modo atual.
   As opções de mostrar ajuda e depuração conservam sua preferência atual.
 
 ## 6. Problemas comuns
@@ -175,7 +194,8 @@ algumas posições inclinadas não cabem na garra. Reposicione-a ou use `R`.
 Reiniciar sempre retorna aos três prêmios em posições utilizáveis.
 
 **Prêmio na bandeja, mas sem ponto:** ele deve estar solto, apoiado diretamente
-na bandeja e totalmente dentro dela. Uma pilha ou a borda não é uma entrega.
+na bandeja, parado e totalmente dentro dela. Espere os quiques terminarem.
+Uma pilha ou a borda não é uma entrega.
 
 **Textos pequenos ou sobrepostos:** amplie a janela para 1280 × 800.
 Os textos da interface usam caracteres sem acentos por compatibilidade com a
@@ -187,9 +207,11 @@ Esta é uma simulação didática de cinemática direta. Não inclui IK, física
 realista dos dedos, autocolisão entre segmentos, deformação de pelúcia, som,
 persistência entre execuções ou salvamento de partida. A câmera pode mostrar
 o verso das peças; não há vidro transparente nem sombras projetadas.
+As colisões usam caixas conservadoras e não provocam rotação dos aliens.
 
-As três rotas da tabela foram verificadas com as colisões ativadas. Os testes
-de lógica e memória podem ser executados com `make test` e `make sanitize`.
+Os testes verificam a entrega dos três aliens em todos os modos, quiques,
+colisões entre prêmios, tempo esgotado, reinício e falhas de alocação.
+Execute os testes de lógica e memória com `make test` e `make sanitize`.
 
 Para reproduzir a sessão automática de verificação:
 

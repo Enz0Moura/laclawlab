@@ -224,14 +224,75 @@ static void help(const UserInterface *ui) {
                            "",
                            "Camera: arraste com botao direito; roda ajusta zoom.",
                            "Home: restaurar camera. Espaco: alternar garra.",
-                           "R: reiniciar tudo. D: depuracao. Esc: sair.",
+                           "R: repetir modo. M: escolher modo. Esc: sair.",
                            "H ou F1: fechar esta ajuda.",
-                           "Tutorial com angulos exatos: docs/MANUAL_DO_USUARIO.md"};
+                           "Menu e ajuda pausam a partida e o cronometro."};
     for (int i = 0; i < 12; ++i)
         render_text(x + 24, y + 72 + (float)i * 24, lines[i], i == 11 ? ACCENT : TEXT, false);
 }
+UIRect ui_mode_rect(const UserInterface *ui, int mode) {
+    float w = fminf(660, (float)ui->width - 48);
+    float h = fminf(76, ((float)ui->height - 230) / 4);
+    return (UIRect){((float)ui->width - w) * .5f, 178 + (float)mode * (h + 12), w, h};
+}
+int ui_mode_at(const UserInterface *ui, int x, int y) {
+    if (!ui->menu)
+        return -1;
+    for (int i = 0; i < MODE_COUNT; ++i) {
+        UIRect r = ui_mode_rect(ui, i);
+        if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
+            return i;
+    }
+    return -1;
+}
+static void menu(const UserInterface *ui) {
+    UserInterface background = *ui;
+    background.width += UI_PANEL_WIDTH;
+    space_background(&background);
+    UIRect first = ui_mode_rect(ui, 0);
+    render_text(first.x, 112, "ESCOLHA SUA MISSAO", GOLD, true);
+    render_text(first.x, 143, "Resgate os 3 aliens. Clique em um modo ou pressione 1-4.", TEXT,
+                false);
+    const char *descriptions[] = {"Sem limite de tempo. Quiques suaves para praticar.",
+                                  "4 minutos. Quiques leves e parada mais rapida.",
+                                  "3 minutos. Quiques mais altos exigem cuidado.",
+                                  "2 minutos. Quiques fortes: planeje cada entrega."};
+    const Color colors[] = {
+        {.69f, .91f, .24f}, {.24f, .80f, .74f}, {1, .81f, .18f}, {1, .32f, .30f}};
+    for (int i = 0; i < MODE_COUNT; ++i) {
+        UIRect r = ui_mode_rect(ui, i);
+        render_rect(r.x, r.y, r.w, r.h, PANEL);
+        render_rect(r.x, r.y, 4, r.h, colors[i]);
+        char title[48];
+        snprintf(title, sizeof(title), "%d  %s", i + 1, GAME_MODES[i].name);
+        render_text(r.x + 22, r.y + 29, title, colors[i], true);
+        render_text(r.x + 22, r.y + r.h - 16, descriptions[i], TEXT, false);
+    }
+    UIRect last = ui_mode_rect(ui, MODE_COUNT - 1);
+    render_text(first.x, last.y + last.h + 36,
+                "Escolher um modo inicia uma nova partida. Esc: sair.", MUTED, false);
+}
+static void round_result(const UserInterface *ui, const PrizeMachine *m) {
+    float w = fminf(640, (float)ui_view_width(ui) - 40);
+    float x = ((float)ui_view_width(ui) - w) * .5f, y = (float)ui->height * .43f;
+    render_rect(x, y, w, 145, PANEL);
+    render_rect(x, y, 4, 145, m->round == ROUND_WON ? ACCENT : GOLD);
+    render_text(x + 24, y + 38, m->round == ROUND_WON ? "MISSAO CUMPRIDA!" : "TEMPO ESGOTADO", GOLD,
+                true);
+    char text[80];
+    snprintf(text, sizeof(text), "%d de 3 aliens resgatados / %s", m->delivered,
+             GAME_MODES[m->mode].name);
+    render_text(x + 24, y + 75, text, TEXT, false);
+    render_text(x + 24, y + 112, "R: tentar novamente   /   M: escolher outro modo", MUTED, false);
+}
 void ui_draw(const UserInterface *ui, const PrizeMachine *m) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    if (ui->menu) {
+        render_overlay_begin(ui->width, ui->height);
+        menu(ui);
+        render_overlay_end();
+        return;
+    }
     render_overlay_begin(ui->width, ui->height);
     space_background(ui);
     render_overlay_end();
@@ -243,7 +304,17 @@ void ui_draw(const UserInterface *ui, const PrizeMachine *m) {
     render_text(76, 36, "PIZZA PLANET", TEXT, true);
     render_text(76, 56, "A GARRA!   /   LACLAW LAB", GOLD, false);
     render_rect(0, UI_TOP - 3, (float)ui->width, 3, (Color){.82f, .08f, .13f});
-    render_text((float)ui->width - 286, 42, "3 ALIENS   /   UMA MISSAO", GOLD, false);
+    char clock[80];
+    if (GAME_MODES[m->mode].time_limit > 0) {
+        int seconds = (int)ceilf(m->time_remaining);
+        snprintf(clock, sizeof(clock), "%s / %02d:%02d", GAME_MODES[m->mode].name, seconds / 60,
+                 seconds % 60);
+    } else
+        snprintf(clock, sizeof(clock), "SANDBOX / SEM TEMPO LIMITE");
+    render_text((float)ui->width - 480, 43, clock,
+                m->mode != MODE_SANDBOX && m->time_remaining < 30 ? (Color){1, .32f, .30f} : GOLD,
+                false);
+    button((float)ui->width - 155, 23, 130, "M  MODOS", false);
     render_text(25, 105,
                 ui->debug ? "DEPURACAO  /  D para ocultar"
                           : "A GARRA ESCOLHEU VOCE. RESGATE A TRIPULACAO!",
@@ -260,7 +331,7 @@ void ui_draw(const UserInterface *ui, const PrizeMachine *m) {
     render_text(26, (float)ui->height - 40, status, TEXT, true);
     render_text(26, (float)ui->height - 17,
                 "Botao direito: orbitar   /   Roda: zoom   /   Home: camera   /   H: ajuda   /   "
-                "D: depuracao",
+                "M: modos",
                 MUTED, false);
     if (ui->debug) {
         Vec3 p = machine_grip_position(m);
@@ -270,6 +341,8 @@ void ui_draw(const UserInterface *ui, const PrizeMachine *m) {
         render_rect(20, 117, (float)ui_view_width(ui) - 40, 29, INK);
         render_text(28, 136, text, (Color){1, .7f, .3f}, false);
     }
+    if (m->round != ROUND_PLAYING)
+        round_result(ui, m);
     if (ui->help)
         help(ui);
     render_overlay_end();
