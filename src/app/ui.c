@@ -225,9 +225,9 @@ static void help(const UserInterface *ui) {
                            "Camera: direito gira; roda pressionada desloca.",
                            "F: camera livre (direito olha; roda avanca/recua).",
                            "Home: restaurar camera. Espaco: alternar garra.",
-                           "R: repetir modo. M: escolher modo. Esc: sair.",
+                           "R: reiniciar. P ou Esc: abrir a pausa.",
                            "H ou F1: fechar ajuda. D: depuracao.",
-                           "Menu e ajuda pausam a partida e o cronometro."};
+                           "Continuar na pausa preserva a partida e o tempo."};
     size_t count = sizeof(lines) / sizeof(lines[0]);
     for (size_t i = 0; i < count; ++i)
         render_text(x + 24, y + 72 + (float)i * 24, lines[i], i + 1 == count ? ACCENT : TEXT,
@@ -247,6 +247,48 @@ int ui_mode_at(const UserInterface *ui, int x, int y) {
             return i;
     }
     return -1;
+}
+UIRect ui_pause_rect(const UserInterface *ui, int action) {
+    float w = fminf(560, (float)ui->width - 48);
+    return (UIRect){((float)ui->width - w) * .5f + 24,
+                    ((float)ui->height - 330) * .5f + 112 + (float)action * 52, w - 48, 34};
+}
+unsigned char ui_pause_at(const UserInterface *ui, int x, int y) {
+    if (!ui->paused || ui->menu)
+        return 0;
+    const unsigned char commands[] = {'p', 'r', 'm'};
+    for (int i = 0; i < 3; ++i) {
+        UIRect r = ui_pause_rect(ui, i);
+        if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
+            return commands[i];
+    }
+    return 0;
+}
+static void pause_menu(const UserInterface *ui, const PrizeMachine *m) {
+    UIRect first = ui_pause_rect(ui, 0);
+    float x = first.x - 24, y = first.y - 112;
+    render_rect(x, y, first.w + 48, 330, PANEL);
+    render_rect(x, y, 4, 330, GOLD);
+    render_text(first.x, y + 39, "PARTIDA PAUSADA", GOLD, true);
+    char text[96];
+    if (m->mode == MODE_SANDBOX)
+        snprintf(text, sizeof(text), "Sandbox / %d de 3 aliens / sem limite de tempo",
+                 m->delivered);
+    else {
+        int seconds = (int)ceilf(m->time_remaining);
+        snprintf(text, sizeof(text), "%s / %d de 3 aliens / %02d:%02d restantes",
+                 GAME_MODES[m->mode].name, m->delivered, seconds / 60, seconds % 60);
+    }
+    render_text(first.x, y + 68, text, TEXT, false);
+    render_text(first.x, y + 91, "Tempo e movimentos congelados. Continue de onde parou.", MUTED,
+                false);
+    const char *labels[] = {"P  CONTINUAR", "R  RESETAR PARTIDA", "M  VOLTAR AOS MODOS"};
+    for (int i = 0; i < 3; ++i) {
+        UIRect r = ui_pause_rect(ui, i);
+        button(r.x, r.y, r.w, labels[i], i == 0);
+    }
+    render_text(first.x, y + 290, "Resetar comeca novamente no mesmo modo.", MUTED, false);
+    render_text(first.x, y + 312, "Voltar aos modos encerra a partida atual.", MUTED, false);
 }
 static void menu(const UserInterface *ui) {
     UserInterface background = *ui;
@@ -286,7 +328,7 @@ static void round_result(const UserInterface *ui, const PrizeMachine *m) {
     snprintf(text, sizeof(text), "%d de 3 aliens resgatados / %s", m->delivered,
              GAME_MODES[m->mode].name);
     render_text(x + 24, y + 75, text, TEXT, false);
-    render_text(x + 24, y + 112, "R: tentar novamente   /   M: escolher outro modo", MUTED, false);
+    render_text(x + 24, y + 112, "R: tentar novamente   /   P: pausa e menu", MUTED, false);
 }
 void ui_draw(const UserInterface *ui, const PrizeMachine *m) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -317,7 +359,7 @@ void ui_draw(const UserInterface *ui, const PrizeMachine *m) {
     render_text((float)ui->width - 480, 43, clock,
                 m->mode != MODE_SANDBOX && m->time_remaining < 30 ? (Color){1, .32f, .30f} : GOLD,
                 false);
-    button((float)ui->width - 155, 23, 130, "M  MODOS", false);
+    button((float)ui->width - 155, 23, 130, ui->paused ? "P  CONTINUAR" : "P  PAUSA", false);
     render_text(25, 105,
                 ui->debug ? "DEPURACAO  /  D para ocultar"
                           : "A GARRA ESCOLHEU VOCE. RESGATE A TRIPULACAO!",
@@ -334,9 +376,9 @@ void ui_draw(const UserInterface *ui, const PrizeMachine *m) {
     render_text(26, (float)ui->height - 40, status, TEXT, true);
     render_text(26, (float)ui->height - 17,
                 ui->free_camera ? "LIVRE / Direito: olhar / Meio: deslocar / Roda: mover / F: "
-                                  "orbital / M: modos / H: ajuda"
+                                  "orbital / P: pausa / H: ajuda"
                                 : "ORBITAL / Direito: girar / Meio: deslocar / Roda: zoom / F: "
-                                  "livre / M: modos / H: ajuda",
+                                  "livre / P: pausa / H: ajuda",
                 MUTED, false);
     if (ui->debug) {
         Vec3 p = machine_grip_position(m);
@@ -350,6 +392,8 @@ void ui_draw(const UserInterface *ui, const PrizeMachine *m) {
         round_result(ui, m);
     if (ui->help)
         help(ui);
+    if (ui->paused)
+        pause_menu(ui, m);
     render_overlay_end();
 }
 unsigned char ui_click(const UserInterface *ui, int x, int y) {

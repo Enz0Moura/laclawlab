@@ -54,9 +54,12 @@ right-drag looks around and scrolling moves forward or backward. **Home** resets
 | Hard (Difícil) | 2 minutes | Strong bounces and weaker damping |
 
 Released aliens bounce off the floor, cabinet and each other. Delivery counts only
-once an alien settles directly on the tray, entirely inside it. **M** opens the menu;
-choosing a mode starts a new game. The menu and help pause the simulation and timer.
-**R** restarts the current mode. Victory or timeout ends the round.
+once an alien settles directly on the tray, entirely inside it. **P**, **Esc** or
+the **P PAUSA** button opens the pause menu and freezes the simulation and timer.
+**Continuar** (continue) resumes the current game, preserving the camera, claw,
+aliens and score. In the pause menu, **Resetar partida** restarts the current mode
+and **Voltar aos modos** ends the game to choose another mode. **R** also restarts
+during gameplay. Help freezes the timer. Victory or timeout ends the round.
 
 ## Documentation
 

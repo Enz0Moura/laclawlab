@@ -29,15 +29,30 @@ static void choose_mode(GameMode mode) {
         fprintf(stderr, "Sem memoria para iniciar; partida anterior preservada.\n");
         return;
     }
-    ui.menu = ui.help = false;
+    ui.menu = ui.help = ui.paused = false;
     reset_camera();
     ui.active_joint = held_direction = 0;
+    last_time = glutGet(GLUT_ELAPSED_TIME);
 }
-static void open_menu(void) {
+static void return_to_modes(void) {
+    if (!machine_reset(machine)) {
+        fprintf(stderr, "Sem memoria para voltar aos modos; partida pausada preservada.\n");
+        return;
+    }
     ui.menu = true;
+    ui.help = ui.paused = false;
+    reset_camera();
+    ui.active_joint = 0;
+    held_direction = 0;
+    last_time = glutGet(GLUT_ELAPSED_TIME);
+}
+static void toggle_pause(void) {
+    ui.paused = !ui.paused;
     ui.help = false;
     held_direction = 0;
     drag_button = -1;
+    /* Discard time spent in the overlay, including the interval between timer callbacks. */
+    last_time = glutGet(GLUT_ELAPSED_TIME);
 }
 
 static void cleanup(void) {
@@ -64,8 +79,10 @@ static void reset(void) {
         return;
     }
     reset_camera();
+    ui.paused = ui.help = false;
     ui.active_joint = 0;
     held_direction = 0;
+    last_time = glutGet(GLUT_ELAPSED_TIME);
 }
 static void key(unsigned char k, int x, int y) {
     (void)x;
@@ -79,20 +96,26 @@ static void key(unsigned char k, int x, int y) {
         glutPostRedisplay();
         return;
     }
-    if (k == 'm') {
-        open_menu();
+    if (k == 'p' || k == 27) {
+        toggle_pause();
+        glutPostRedisplay();
         return;
     }
-    if (ui.help && k != 'h' && k != 27)
+    if (ui.paused) {
+        if (k == 'r')
+            reset();
+        else if (k == 'm')
+            return_to_modes();
+        glutPostRedisplay();
+        return;
+    }
+    if (ui.help && k != 'h')
         return;
     if (k >= '1' && k <= '4') {
         ui.active_joint = k - '1';
         held_direction = 0;
     }
     switch (k) {
-    case 27:
-        glutLeaveMainLoop();
-        break;
     case '+':
     case '=':
         machine_nudge_joint(machine, ui.active_joint, 5);
@@ -142,7 +165,7 @@ static void key(unsigned char k, int x, int y) {
 static void special(int k, int x, int y) {
     (void)x;
     (void)y;
-    if (ui.menu)
+    if (ui.menu || ui.paused)
         return;
     if (k == GLUT_KEY_F1) {
         key('h', 0, 0);
@@ -175,7 +198,15 @@ static void mouse(int button, int state, int x, int y) {
     }
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN && y >= 23 && y <= 57 &&
         x >= ui.width - 155 && x <= ui.width - 25) {
-        open_menu();
+        toggle_pause();
+        return;
+    }
+    if (ui.paused) {
+        if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+            unsigned char command = ui_pause_at(&ui, x, y);
+            if (command)
+                key(command, x, y);
+        }
         return;
     }
     if (button == GLUT_RIGHT_BUTTON || button == GLUT_MIDDLE_BUTTON) {
@@ -208,7 +239,7 @@ static void mouse(int button, int state, int x, int y) {
     }
 }
 static void motion(int x, int y) {
-    if (ui.menu || ui.help)
+    if (ui.menu || ui.help || ui.paused)
         return;
     float dx = (float)(x - drag_x), dy = (float)(y - drag_y);
     if (drag_button == GLUT_MIDDLE_BUTTON)
@@ -224,7 +255,7 @@ static void motion(int x, int y) {
 }
 static void wheel(int wheel_number, int direction, int x, int y) {
     (void)wheel_number;
-    if (!ui.menu && !ui.help && x >= 0 && x < ui_view_width(&ui) && y >= UI_TOP &&
+    if (!ui.menu && !ui.help && !ui.paused && x >= 0 && x < ui_view_width(&ui) && y >= UI_TOP &&
         y < ui.height - UI_BOTTOM) {
         if (ui.free_camera)
             camera_dolly(&ui.camera, (float)direction * .6f);
@@ -242,6 +273,16 @@ static void reshape(int width, int height) {
     ui.width = width > 0 ? width : 1;
     ui.height = height > 0 ? height : 1;
 }
+static void update_game(float dt) {
+    if (ui.menu || ui.help || ui.paused)
+        return;
+    if (held_direction)
+        machine_target_joint(machine, ui.active_joint,
+                             machine->arm.angle[ui.active_joint] +
+                                 (float)held_direction *
+                                     MACHINE_CONFIG.joints[ui.active_joint].speed * fminf(dt, .1f));
+    machine_update(machine, dt);
+}
 static void smoke_target(int joint, float value) {
     key((unsigned char)('1' + joint), 0, 0);
     int steps = (int)lroundf((value - machine->arm.target[joint]) / 5);
@@ -251,6 +292,86 @@ static void smoke_target(int joint, float value) {
 static bool same_camera(Camera a, Camera b) {
     return v3_length(v3_sub(a.target, b.target)) < .001f && fabsf(a.yaw - b.yaw) < .001f &&
            fabsf(a.pitch - b.pitch) < .001f && fabsf(a.distance - b.distance) < .001f;
+}
+typedef struct {
+    PrizeMachine machine;
+    Camera camera;
+    int active_joint;
+    bool free_camera, debug;
+    Mat4 local[PRIZE_COUNT], world[PRIZE_COUNT], arm[ARM_PART_COUNT];
+} SmokeSnapshot;
+static SmokeSnapshot smoke_pause_snapshot;
+static int smoke_pause_frames;
+static void snapshot_game(SmokeSnapshot *saved) {
+    memcpy(&saved->machine, machine, sizeof(*machine));
+    saved->camera = ui.camera;
+    saved->active_joint = ui.active_joint;
+    saved->free_camera = ui.free_camera;
+    saved->debug = ui.debug;
+    for (int p = 0; p < PRIZE_COUNT; ++p) {
+        saved->local[p] = machine->prizes[p].node->local;
+        saved->world[p] = machine->prizes[p].node->world;
+    }
+    for (int p = 0; p < ARM_PART_COUNT; ++p)
+        saved->arm[p] = machine->arm.parts[p]->world;
+}
+static bool matches_snapshot(const SmokeSnapshot *saved) {
+    if (memcmp(&saved->machine, machine, sizeof(*machine)) != 0 ||
+        !same_camera(saved->camera, ui.camera) || saved->active_joint != ui.active_joint ||
+        saved->free_camera != ui.free_camera || saved->debug != ui.debug)
+        return false;
+    for (int p = 0; p < PRIZE_COUNT; ++p)
+        if (memcmp(&saved->local[p], &machine->prizes[p].node->local, sizeof(Mat4)) != 0 ||
+            memcmp(&saved->world[p], &machine->prizes[p].node->world, sizeof(Mat4)) != 0)
+            return false;
+    for (int p = 0; p < ARM_PART_COUNT; ++p)
+        if (memcmp(&saved->arm[p], &machine->arm.parts[p]->world, sizeof(Mat4)) != 0)
+            return false;
+    return true;
+}
+static void smoke_pause_click(int action) {
+    UIRect r = ui_pause_rect(&ui, action);
+    mouse(GLUT_LEFT_BUTTON, GLUT_DOWN, (int)(r.x + r.w / 2), (int)(r.y + r.h / 2));
+}
+static bool smoke_preserve_pause(void) {
+    SmokeSnapshot before;
+    snapshot_game(&before);
+    mouse(GLUT_LEFT_BUTTON, GLUT_DOWN, ui.width - 90, 40);
+    key('c', 0, 0);
+    key('o', 0, 0);
+    key('4', 0, 0);
+    key('+', 0, 0);
+    key('f', 0, 0);
+    key('h', 0, 0);
+    key('d', 0, 0);
+    special(GLUT_KEY_LEFT, 0, 0);
+    special(GLUT_KEY_HOME, 0, 0);
+    special(GLUT_KEY_F1, 0, 0);
+    mouse(GLUT_LEFT_BUTTON, GLUT_DOWN, ui_view_width(&ui) + 30, 320);
+    mouse(GLUT_MIDDLE_BUTTON, GLUT_DOWN, 300, 300);
+    motion(400, 360);
+    wheel(0, 1, 300, 300);
+    update_game(10); /* The same update path as the real timer callback. */
+    special_up(GLUT_KEY_LEFT, 0, 0);
+    if (!ui.paused || ui.menu || drag_button != -1 || held_direction != 0 ||
+        !matches_snapshot(&before)) {
+        quit_failure("pause freezes the full game state and blocks input");
+        return false;
+    }
+    smoke_pause_click(0);
+    motion(450, 400);
+    if (ui.paused || !matches_snapshot(&before)) {
+        quit_failure("continue preserves the full game state");
+        return false;
+    }
+    key(27, 0, 0);
+    update_game(5);
+    key('p', 0, 0);
+    if (ui.paused || !matches_snapshot(&before)) {
+        quit_failure("keyboard pause and resume preserve state");
+        return false;
+    }
+    return true;
 }
 static void smoke_step(float dt) {
     if (smoke_menu_phase < 2) {
@@ -276,14 +397,23 @@ static void smoke_step(float dt) {
                 key('f', 0, 0);
                 mouse(GLUT_MIDDLE_BUTTON, GLUT_DOWN, 300, 300);
                 motion(340, 320);
-                Camera before_menu = ui.camera;
-                mouse(GLUT_LEFT_BUTTON, GLUT_DOWN, ui.width - 90, 40);
-                motion(400, 360);
-                wheel(0, 1, 300, 300);
-                key('f', 0, 0);
-                if (!ui.menu || !ui.free_camera || drag_button != -1 ||
-                    !same_camera(ui.camera, before_menu)) {
-                    quit_failure("menu cancels camera drag and blocks camera input");
+                key('+', 0, 0);
+                update_game(.1f);
+                if (!smoke_preserve_pause())
+                    return;
+                float before_resume = machine->time_remaining;
+                update_game(.02f);
+                if (i != MODE_SANDBOX && machine->time_remaining >= before_resume) {
+                    quit_failure("countdown resumes after continue");
+                    return;
+                }
+                key('p', 0, 0);
+                smoke_pause_click(2);
+                if (!ui.menu || ui.paused || ui.free_camera || drag_button != -1 ||
+                    !same_camera(ui.camera, camera_default()) ||
+                    machine->time_remaining != GAME_MODES[i].time_limit ||
+                    machine->arm.angle[0] != MACHINE_CONFIG.joints[0].initial) {
+                    quit_failure("returning to modes discards the current round");
                     return;
                 }
             }
@@ -320,6 +450,15 @@ static void smoke_step(float dt) {
             }
         }
         ++smoke_menu_phase;
+        return;
+    }
+    if (smoke_pause_frames > 0) {
+        if (!ui.paused || !matches_snapshot(&smoke_pause_snapshot)) {
+            quit_failure("pause preserves state across real timer callbacks");
+            return;
+        }
+        if (--smoke_pause_frames == 0)
+            smoke_pause_click(0);
         return;
     }
     if (++smoke_frames > 2400) {
@@ -367,6 +506,8 @@ static void smoke_step(float dt) {
             quit_failure("capture");
             return;
         }
+        if (!smoke_preserve_pause())
+            return;
         if (smoke_prize == 0)
             pending_capture = "build/smoke_pickup.ppm";
         smoke_target(1, -25);
@@ -383,6 +524,15 @@ static void smoke_step(float dt) {
             return;
         }
         key('o', 0, 0);
+        update_game(1.0f / 60);
+        if (!smoke_preserve_pause())
+            return;
+        if (smoke_prize == 0) {
+            snapshot_game(&smoke_pause_snapshot);
+            key('p', 0, 0);
+            smoke_pause_frames = 3;
+            pending_capture = "build/smoke_pause.ppm";
+        }
         break;
     case 8:
         if (machine->prizes[smoke_prize].state == PRIZE_FALLING)
@@ -462,7 +612,8 @@ static void smoke_step(float dt) {
             quit_failure("reset");
             return;
         }
-        key('m', 0, 0);
+        key('p', 0, 0);
+        smoke_pause_click(2);
         key('4', 0, 0);
         machine->time_remaining = .01f;
         break;
@@ -474,14 +625,15 @@ static void smoke_step(float dt) {
         pending_capture = "build/smoke_timeout.ppm";
         break;
     case 14:
-        key('r', 0, 0);
+        key('p', 0, 0);
+        smoke_pause_click(1);
         if (machine->round != ROUND_PLAYING || machine->mode != MODE_HARD ||
             machine->time_remaining != GAME_MODES[MODE_HARD].time_limit) {
             quit_failure("retry same difficulty");
             return;
         }
-        puts("prize_machine: graphical session passed (menu, modes, pause, all 3 prizes, "
-             "free camera, modal input, collision, delivery, timeout, retry)");
+        puts("prize_machine: graphical session passed (pause/resume, frozen state and timer, "
+             "reset, return to modes, all 3 prizes, free camera, collision, delivery, timeout)");
         glutLeaveMainLoop();
         break;
     default:
@@ -514,13 +666,7 @@ static void timer(int value) {
     int now = glutGet(GLUT_ELAPSED_TIME);
     float dt = smoke ? 1.0f / 60 : fmaxf((float)(now - last_time) * .001f, 0);
     last_time = now;
-    if (held_direction && !ui.menu && !ui.help)
-        machine_target_joint(machine, ui.active_joint,
-                             machine->arm.angle[ui.active_joint] +
-                                 (float)held_direction *
-                                     MACHINE_CONFIG.joints[ui.active_joint].speed * fminf(dt, .1f));
-    if (!ui.menu && !ui.help)
-        machine_update(machine, dt);
+    update_game(dt);
     if (smoke)
         smoke_step(dt);
     glutPostRedisplay();
