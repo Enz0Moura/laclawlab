@@ -30,11 +30,24 @@ The menu appears when the simulator starts. Click an option or press **1–4**:
 | `4` | Hard (Dificil) | 2 minutes | Strong bounces; aliens take longer to settle |
 
 During gameplay, **1–4** select joints again. The header shows the mode and
-remaining time; the timer turns red below 30 seconds. **M** or **M MODOS**
-opens the menu. Choosing a mode always starts a new game. The menu and help
-pause the simulation and timer. **R** restarts the current mode and its timer.
+remaining time; the timer turns red below 30 seconds. **P**, **Esc** or the
+**P PAUSA** button opens the pause menu. The countdown, arm movement and alien
+bounces freeze. The pause menu offers three options:
+
+- **Continuar** (`P` or `Esc`): resumes the same remaining time, positions,
+  velocities, selection, camera, claw opening, held prize and score. It does not create a new game.
+- **Resetar partida** (`R`): restarts the current mode, including its timer and camera.
+- **Voltar aos modos** (`M`, while paused): ends the current game and opens mode
+  selection. Choosing a mode starts a new game.
+
+The header button changes to **P CONTINUAR** while paused. Gameplay controls behind
+the overlay are blocked; to move with the arrow keys or drag the camera again,
+start a new gesture after continuing. Help also freezes the timer.
+**R** remains available to restart during gameplay.
 Delivering all three aliens or running out of time stops the round and displays
-the result. Use **R** to retry, **M** to choose another mode or **Esc** to exit.
+the result. Use **R** to retry or open pause to return to mode selection. Continuing
+after a result keeps the round finished. To exit, close the window or press
+**Esc** on the mode selection screen.
 
 ## 2. Setup and execution
 
@@ -97,8 +110,10 @@ zoom and `Esc` exits. The simulator uses the controls in the next section.
 | Help | `H`, `F1` or the **H AJUDA** button |
 | Debug views | `D` |
 | Reset the scene and camera | `R` or the **R REINICIAR** button |
-| Open the mode menu | `M` or the **M MODOS** button |
-| Exit | `Esc` or close the window |
+| Pause / continue | `P`, `Esc` or **P PAUSA** / **P CONTINUAR** |
+| Restart from pause | **R RESETAR PARTIDA** or `R` |
+| Return to mode selection | **M VOLTAR AOS MODOS** or `M`, while paused |
+| Exit | Close the window or `Esc` on the mode selection screen |
 
 Letter keys work in both uppercase and lowercase. For 5° and 1° increments,
 press and release the key for each step; holding `+` does not repeat the steps.
@@ -230,8 +245,10 @@ of parts; there is no transparent glass or cast shadows.
 Collisions use conservative boxes and do not rotate aliens.
 
 Tests cover delivery of all three aliens in every mode, bounces, collisions
-between prizes, timeout, reset and allocation failures. Run the logic and
-memory tests with `make test` and `make sanitize`.
+between prizes, timeout, reset and allocation failures. The graphical test
+compares state before and after pausing, including while holding a prize and
+with moving aliens, and verifies returning to modes and resetting. Run the
+logic and memory tests with `make test` and `make sanitize`.
 
 To reproduce the automated verification session:
 

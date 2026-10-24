@@ -27,10 +27,23 @@ O menu aparece ao abrir o simulador. Clique numa opção ou pressione **1–4**:
 
 Durante a partida, **1–4** voltam a selecionar as juntas. O topo mostra o modo
 e o tempo restante; abaixo de 30 segundos, o cronômetro fica vermelho.
-**M** ou **M MODOS** abre o menu. Escolher um modo sempre começa uma nova partida.
-Menu e ajuda pausam a simulação e o tempo. **R** reinicia o modo atual e seu cronômetro.
+**P**, **Esc** ou o botão **P PAUSA** abre a pausa. O cronômetro, os movimentos do
+braço e os quiques dos aliens ficam congelados. A pausa oferece três opções:
+
+- **Continuar** (`P` ou `Esc`): retoma o mesmo tempo restante, posições, velocidades,
+  seleção, câmera, abertura da garra, prêmio capturado e pontuação. Não cria outra partida.
+- **Resetar partida** (`R`): reinicia o modo atual, incluindo cronômetro e câmera.
+- **Voltar aos modos** (`M`, dentro da pausa): encerra a partida atual e abre a tela
+  de seleção. Escolher um modo começa uma nova partida.
+
+O botão do topo muda para **P CONTINUAR** enquanto a pausa está aberta. Os controles
+do jogo atrás dela ficam bloqueados; para mover de novo com setas ou arrastar a
+câmera, comece um novo gesto depois de continuar. A ajuda também congela o tempo.
+**R** continua disponível para reiniciar durante o jogo.
 Ao entregar os três aliens ou esgotar o tempo, a rodada para e mostra o resultado.
-Use **R** para tentar novamente, **M** para escolher outro modo ou **Esc** para sair.
+Use **R** para tentar novamente ou abra a pausa para voltar aos modos. Continuar
+após o resultado mantém a rodada encerrada. Para sair, feche a janela ou pressione
+**Esc** na tela de modos.
 
 ## 2. Preparação e execução
 
@@ -91,8 +104,10 @@ pai. Nesse exemplo, as setas controlam a câmera, `+`/`-` controlam o zoom e
 | Ajuda | `H`, `F1` ou botão **H AJUDA** |
 | Visualização de depuração | `D` |
 | Reiniciar a cena e a câmera | `R` ou botão **R REINICIAR** |
-| Abrir o menu de modos | `M` ou botão **M MODOS** |
-| Sair | `Esc` ou fechar a janela |
+| Pausar / continuar | `P`, `Esc` ou botão **P PAUSA** / **P CONTINUAR** |
+| Reiniciar pela pausa | **R RESETAR PARTIDA** ou `R` |
+| Voltar à tela de modos | **M VOLTAR AOS MODOS** ou `M`, dentro da pausa |
+| Sair | Fechar a janela ou `Esc` na tela de modos |
 
 As letras funcionam em maiúsculas e minúsculas. Para os incrementos de 5° e 1°,
 pressione e solte a tecla a cada passo; segurar `+` não repete os passos.
@@ -220,6 +235,8 @@ As colisões usam caixas conservadoras e não provocam rotação dos aliens.
 
 Os testes verificam a entrega dos três aliens em todos os modos, quiques,
 colisões entre prêmios, tempo esgotado, reinício e falhas de alocação.
+O teste gráfico compara o estado antes e depois da pausa, inclusive durante
+uma captura e com aliens em movimento, e verifica o retorno aos modos e o reset.
 Execute os testes de lógica e memória com `make test` e `make sanitize`.
 
 Para reproduzir a sessão automática de verificação:

@@ -462,7 +462,7 @@ void machine_update(PrizeMachine *m, float dt) {
             message(m, "Entrega concluida!");
         if (m->delivered == PRIZE_COUNT) {
             m->round = ROUND_WON;
-            message(m, "Tripulacao resgatada! R: repetir. M: modos.");
+            message(m, "Tripulacao resgatada! R: repetir. P: pausa.");
             return;
         }
     }
@@ -471,7 +471,7 @@ void machine_update(PrizeMachine *m, float dt) {
         if (m->time_remaining <= .00001f) {
             m->time_remaining = 0;
             m->round = ROUND_LOST;
-            message(m, "Tempo esgotado! R: repetir. M: modos.");
+            message(m, "Tempo esgotado! R: repetir. P: pausa.");
         }
     }
 }

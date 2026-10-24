@@ -52,9 +52,12 @@ livre: botão direito olha ao redor e a roda avança ou recua. **Home** restaura
 | Difícil | 2 minutos | Quiques fortes e menor amortecimento |
 
 Aliens soltos quicam no piso, na cabine e entre si. A entrega conta apenas quando
-o alien para diretamente na bandeja, inteiramente dentro dela. **M** abre o menu;
-escolher um modo inicia uma nova partida. Menu e ajuda pausam a simulação e o
-cronômetro. **R** reinicia o modo atual. Vitória ou tempo esgotado encerram a rodada.
+o alien para diretamente na bandeja, inteiramente dentro dela. **P**, **Esc** ou o
+botão **P PAUSA** abre a pausa e congela a simulação e o cronômetro. **Continuar**
+retoma exatamente a partida atual, preservando câmera, garra, aliens e pontuação.
+Na pausa, **Resetar partida** reinicia o modo atual e **Voltar aos modos** encerra
+a partida para escolher outro modo. **R** também reinicia durante o jogo.
+A ajuda congela o tempo. Vitória ou tempo esgotado encerram a rodada.
 
 ## Documentação
 
