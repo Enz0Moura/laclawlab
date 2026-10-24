@@ -1,0 +1,82 @@
+/* GNU/LLVM linker wrapping injects failure in author-owned allocations only.
+ * No production allocator hooks, graphics context, or system-wide failures. */
+#include "app/machine.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+
+void *__real_malloc(size_t size);
+void *__real_calloc(size_t count, size_t size);
+void __real_free(void *pointer);
+static size_t calls, fail_at, live;
+void *__wrap_malloc(size_t size) {
+    if (++calls == fail_at)
+        return NULL;
+    void *p = __real_malloc(size);
+    if (p)
+        ++live;
+    return p;
+}
+void *__wrap_calloc(size_t count, size_t size) {
+    if (++calls == fail_at)
+        return NULL;
+    void *p = __real_calloc(count, size);
+    if (p)
+        ++live;
+    return p;
+}
+void __wrap_free(void *pointer) {
+    if (pointer) {
+        if (!live) {
+            fputs("FAIL: unmatched free\n", stderr);
+            exit(EXIT_FAILURE);
+        }
+        --live;
+    }
+    __real_free(pointer);
+}
+#define CHECK(condition)                                                                           \
+    do {                                                                                           \
+        if (!(condition)) {                                                                        \
+            fprintf(stderr, "FAIL allocation %zu: %s\n", fail_at, #condition);                     \
+            exit(EXIT_FAILURE);                                                                    \
+        }                                                                                          \
+    } while (0)
+int main(void) {
+    PrizeMachine *m = machine_create();
+    CHECK(m);
+    size_t total = calls;
+    machine_destroy(m);
+    CHECK(live == 0);
+    for (size_t i = 1; i <= total; ++i) {
+        calls = 0;
+        fail_at = i;
+        m = machine_create();
+        CHECK(m == NULL);
+        CHECK(live == 0);
+    }
+    fail_at = 0;
+    m = machine_create();
+    CHECK(m);
+    SceneNode *root = m->root;
+    m->selected = 1;
+    size_t baseline = live;
+    for (size_t i = 1; i <= total; ++i) {
+        calls = 0;
+        fail_at = i;
+        CHECK(!machine_reset(m));
+        CHECK(m->root == root);
+        CHECK(m->selected == 1);
+        CHECK(live == baseline);
+        CHECK(machine_pose_valid(m));
+    }
+    fail_at = 0;
+    CHECK(machine_reset(m));
+    CHECK(m->selected == -1);
+    CHECK(live == baseline);
+    machine_destroy(m);
+    CHECK(live == 0);
+    printf("PASS: failure at all %zu allocations during creation and reset; no abandoned owners\n",
+           total);
+    return EXIT_SUCCESS;
+}
