@@ -91,8 +91,8 @@ While help is open, objects behind the help panel cannot be selected.
 **Scene:** the machine has a Pizza Planet theme inspired by the Toy Story
 reference: a red rocket, yellow top, side fins, blue band and stars. The metal
 arm has red joints. The three prizes are green aliens with three eyes, an
-antenna and a blue uniform. **Coral, Azul and Amarelo** identify their badges
-and on-screen labels; all three have green skin. The green platform with three
+antenna and uniforms in **Coral, Azul (Blue) and Amarelo (Yellow)**, matching
+their on-screen labels; all three have green skin. The green platform with three
 spaces is the delivery tray. The dark opening on the outside of the rocket is
 decorative. The open front lets you see the arm.
 

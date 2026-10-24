@@ -85,8 +85,8 @@ A ajuda aberta impede selecionar objetos atrás do painel de ajuda.
 **Cena:** a máquina tem o tema Pizza Planet, inspirado em Toy Story:
 foguete vermelho, topo amarelo, aletas laterais, faixa azul e estrelas. O braço
 metálico tem articulações vermelhas. Os três prêmios são alienígenas verdes de
-três olhos, antena e uniforme azul. **Coral, Azul e Amarelo** identificam suas
-insígnias e os rótulos na tela; a pele dos três é verde. A plataforma verde
+três olhos, antena e uniformes nas cores **Coral, Azul e Amarelo**, correspondentes
+aos rótulos na tela; a pele dos três é verde. A plataforma verde
 com três espaços continua sendo a bandeja de entrega. A abertura escura na
 parte externa do foguete é decorativa. A frente aberta permite ver o braço.
 
