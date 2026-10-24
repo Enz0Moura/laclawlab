@@ -5,11 +5,12 @@
 #include "cg/scene.h"
 
 typedef enum { PRIZE_AVAILABLE, PRIZE_HELD, PRIZE_FALLING, PRIZE_DELIVERED } PrizeState;
+typedef enum { ROUND_PLAYING, ROUND_WON, ROUND_LOST } RoundState;
 typedef struct {
     SceneNode *node; /* All node references are borrowed from root. */
     PrizeState state;
     Mat4 relative_to_grip;
-    float fall_speed;
+    Vec3 velocity;
     const char *name;
 } Prize;
 typedef struct {
@@ -30,11 +31,17 @@ typedef struct {
     unsigned blocked_moves;
     char message[96];
     float message_time;
+    GameMode mode;
+    RoundState round;
+    float time_remaining;
+    Vec3 held_velocity;
+    unsigned bounces;
 } PrizeMachine;
 
 PrizeMachine *machine_create(void); /* NULL on allocation failure. No GL needed. */
 void machine_destroy(PrizeMachine *machine);
-bool machine_reset(PrizeMachine *machine); /* Transactional; unchanged on failure. */
+bool machine_reset(PrizeMachine *machine);                /* Transactional; unchanged on failure. */
+bool machine_start(PrizeMachine *machine, GameMode mode); /* Transactional new round. */
 void machine_update(PrizeMachine *machine, float dt);
 void machine_target_joint(PrizeMachine *machine, int joint, float degrees);
 void machine_nudge_joint(PrizeMachine *machine, int joint, float degrees);

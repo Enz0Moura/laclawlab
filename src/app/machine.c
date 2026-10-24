@@ -1,4 +1,5 @@
 #include "app/machine.h"
+#include "app/physics.h"
 #include "app/theme.h"
 
 #include <float.h>
@@ -210,9 +211,16 @@ void machine_destroy(PrizeMachine *m) {
     }
 }
 bool machine_reset(PrizeMachine *m) {
+    return machine_start(m, m->mode);
+}
+bool machine_start(PrizeMachine *m, GameMode mode) {
+    if (mode < MODE_SANDBOX || mode >= MODE_COUNT)
+        return false;
     PrizeMachine *fresh = machine_create();
     if (!fresh)
         return false;
+    fresh->mode = mode;
+    fresh->time_remaining = GAME_MODES[mode].time_limit;
     SceneNode *old = m->root;
     *m = *fresh;
     free(fresh);
@@ -246,7 +254,7 @@ static bool unobstructed(const PrizeMachine *m, Vec3 a, Vec3 b) {
     return true;
 }
 int machine_capture_candidate(const PrizeMachine *m, float *required_gap) {
-    if (m->held >= 0)
+    if (m->held >= 0 || m->round != ROUND_PLAYING)
         return -1;
     Mat4 inverse;
     if (!mat4_inverse(m->arm.grip->world, &inverse))
@@ -329,7 +337,7 @@ bool machine_pose_valid(const PrizeMachine *m) {
     return true;
 }
 void machine_target_joint(PrizeMachine *m, int joint, float degrees) {
-    if (joint < 0 || joint >= JOINT_COUNT || !isfinite(degrees))
+    if (m->round != ROUND_PLAYING || joint < 0 || joint >= JOINT_COUNT || !isfinite(degrees))
         return;
     const JointConfig *c = &MACHINE_CONFIG.joints[joint];
     m->arm.target[joint] = cg_clamp(degrees, c->min, c->max);
@@ -341,13 +349,16 @@ void machine_nudge_joint(PrizeMachine *m, int joint, float degrees) {
         machine_target_joint(m, joint, m->arm.target[joint] + degrees);
 }
 void machine_open(PrizeMachine *m) {
+    if (m->round != ROUND_PLAYING)
+        return;
+    Vec3 release_velocity = machine_at_target(m) ? vec3(0, 0, 0) : m->held_velocity;
     m->arm.opening_target = MACHINE_CONFIG.finger_max;
     if (m->held >= 0) {
         Prize *p = &m->prizes[m->held];
         /* Prize always belongs to root: attachment changes transforms, not owners. */
         p->node->local = p->node->world;
         p->state = PRIZE_FALLING;
-        p->fall_speed = 0;
+        p->velocity = release_velocity;
         m->release_contact = m->held;
         m->held = -1;
         message(m, "Premio solto.");
@@ -355,6 +366,8 @@ void machine_open(PrizeMachine *m) {
         message(m, "Abrindo a garra.");
 }
 void machine_close(PrizeMachine *m) {
+    if (m->round != ROUND_PLAYING)
+        return;
     if (m->held >= 0) {
         message(m, "Garra ocupada.");
         return;
@@ -405,82 +418,66 @@ static void move_fingers(PrizeMachine *m, float dt) {
         Prize *p = &m->prizes[candidate];
         p->relative_to_grip = mat4_mul(inverse, p->node->world);
         p->state = PRIZE_HELD;
+        p->velocity = vec3(0, 0, 0);
+        m->held_velocity = vec3(0, 0, 0);
         m->held = candidate;
         m->arm.opening_target = new_angle;
         message(m, "Premio capturado!");
     }
 }
-static bool horizontal_overlap(AABB a, AABB b) {
-    return a.max.x > b.min.x && a.min.x < b.max.x && a.max.z > b.min.z && a.min.z < b.max.z;
-}
-static void fall(PrizeMachine *m, float dt) {
-    for (int p = 0; p < PRIZE_COUNT; ++p)
-        if (m->prizes[p].state == PRIZE_FALLING) {
-            Prize *prize = &m->prizes[p];
-            AABB bounds = scene_bounds(prize->node);
-            prize->fall_speed += MACHINE_CONFIG.gravity * dt;
-            float new_bottom = bounds.min.y - prize->fall_speed * dt, top = -FLT_MAX;
-            int support = -1;
-            /* Sweep the bottom through all support planes: a fall cannot tunnel. */
-            for (int s = 0; s < m->solid_count + PRIZE_COUNT; ++s) {
-                if (s == m->solid_count + p)
-                    continue;
-                if (s >= m->solid_count && m->prizes[s - m->solid_count].state != PRIZE_AVAILABLE &&
-                    m->prizes[s - m->solid_count].state != PRIZE_DELIVERED)
-                    continue;
-                AABB obstacle = s < m->solid_count
-                                    ? scene_bounds(m->solids[s].node)
-                                    : scene_bounds(m->prizes[s - m->solid_count].node);
-                if (horizontal_overlap(bounds, obstacle) &&
-                    obstacle.max.y <= bounds.min.y + .003f && obstacle.max.y >= new_bottom &&
-                    obstacle.max.y > top) {
-                    top = obstacle.max.y;
-                    support = s;
-                }
-            }
-            float displacement = support >= 0 ? top - bounds.min.y : -prize->fall_speed * dt;
-            prize->node->local.m[13] += displacement;
-            scene_update(prize->node, mat4_identity());
-            if (support >= 0) {
-                prize->fall_speed = 0;
-                prize->state = PRIZE_AVAILABLE;
-                AABB area = machine_delivery_region(m);
-                if (support == m->tray_solid && bounds.min.x >= area.min.x &&
-                    bounds.max.x <= area.max.x && bounds.min.z >= area.min.z &&
-                    bounds.max.z <= area.max.z) {
-                    prize->state = PRIZE_DELIVERED;
-                    ++m->delivered;
-                    if (m->selected == p)
-                        m->selected = -1;
-                    message(m, m->delivered == PRIZE_COUNT
-                                   ? "Todos os premios entregues! R: reiniciar."
-                                   : "Entrega concluida!");
-                } else
-                    message(m, "Premio apoiado. Tente novamente.");
-            }
-        }
-}
 void machine_update(PrizeMachine *m, float dt) {
-    if (!isfinite(dt) || dt <= 0)
+    if (!isfinite(dt) || dt <= 0 || m->round != ROUND_PLAYING)
         return;
-    /* Pause stalls are capped; each accepted slice has bounded angular motion. */
+    float elapsed = dt;
+    bool timed = GAME_MODES[m->mode].time_limit > 0;
+    if (timed)
+        dt = fminf(dt, m->time_remaining);
+    /* Cap physics work after stalls, but account for the full elapsed clock time. */
     dt = fminf(dt, .10f);
-    m->message_time = fmaxf(0, m->message_time - dt);
+    m->message_time = fmaxf(0, m->message_time - elapsed);
     int steps = (int)ceilf(dt / MACHINE_CONFIG.max_step);
-    float step = dt / (float)steps;
+    float step = steps > 0 ? dt / (float)steps : 0;
     for (int i = 0; i < steps; ++i) {
+        int held = m->held;
+        Vec3 before =
+            held >= 0 ? mat4_point(m->prizes[held].node->world, vec3(0, 0, 0)) : vec3(0, 0, 0);
         move_joints(m, step);
         move_fingers(m, step);
-        fall(m, step);
+        if (held >= 0 && m->held == held) {
+            Vec3 after = mat4_point(m->prizes[held].node->world, vec3(0, 0, 0));
+            m->held_velocity =
+                machine_at_target(m) ? vec3(0, 0, 0) : v3_scale(v3_sub(after, before), 1 / step);
+        }
+        int delivered = m->delivered;
+        physics_step(m, step);
         if (m->release_contact >= 0) {
             AABB p = scene_bounds(m->prizes[m->release_contact].node);
             if (!aabb_overlap(p, scene_bounds(m->arm.parts[3]), 0) &&
                 !aabb_overlap(p, scene_bounds(m->arm.parts[4]), 0))
                 m->release_contact = -1;
         }
+        if (timed)
+            m->time_remaining = fmaxf(0, m->time_remaining - step);
+        if (m->delivered > delivered)
+            message(m, "Entrega concluida!");
+        if (m->delivered == PRIZE_COUNT) {
+            m->round = ROUND_WON;
+            message(m, "Tripulacao resgatada! R: repetir. M: modos.");
+            return;
+        }
+    }
+    if (timed) {
+        m->time_remaining = fmaxf(0, m->time_remaining - fmaxf(0, elapsed - dt));
+        if (m->time_remaining <= .00001f) {
+            m->time_remaining = 0;
+            m->round = ROUND_LOST;
+            message(m, "Tempo esgotado! R: repetir. M: modos.");
+        }
     }
 }
 int machine_pick(PrizeMachine *m, Ray ray) {
+    if (m->round != ROUND_PLAYING)
+        return -1;
     float closest = FLT_MAX;
     int selected = -1;
     for (int s = 0; s < m->solid_count; ++s) {
@@ -528,7 +525,7 @@ const char *prize_state_name(PrizeState state) {
     case PRIZE_HELD:
         return "Na garra";
     case PRIZE_FALLING:
-        return "Em queda";
+        return "Em movimento";
     case PRIZE_DELIVERED:
         return "Entregue";
     }

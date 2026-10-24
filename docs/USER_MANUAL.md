@@ -8,16 +8,33 @@
 
 Pick up all three prizes — Coral, Azul (Blue) and Amarelo (Yellow) — with the
 articulated arm and release them into the green tray. Each prize counts once,
-after reaching the tray while released. At **3/3**, the collection is complete.
-There is no time limit, random capture outcome or chance of a prize slipping
-out during transport.
+after settling directly on the tray while released. At **3/3**, the collection is complete.
+Sandbox has no time limit; challenges have a countdown. Capture is not random,
+and a prize cannot slip out while held.
 
 The player controls the joint angles. Clicking a prize only highlights it;
-the arm does not move toward it automatically. The walkthrough in section 5
-provides a verified sequence of angles.
+the arm does not move toward it automatically.
 
 The simulator's interface is in Portuguese. This guide preserves the actual
 on-screen labels, prize names and key bindings so you can find them in the app.
+
+### Choose a mode
+
+The menu appears when the simulator starts. Click an option or press **1–4**:
+
+| Key | Mode | Time | Behavior |
+| --- | --- | --- | --- |
+| `1` | Sandbox | Unlimited | Gentle bounces for practice |
+| `2` | Easy (Facil) | 4 minutes | Light bounces; aliens settle faster |
+| `3` | Medium (Medio) | 3 minutes | Moderate bounces |
+| `4` | Hard (Dificil) | 2 minutes | Strong bounces; aliens take longer to settle |
+
+During gameplay, **1–4** select joints again. The header shows the mode and
+remaining time; the timer turns red below 30 seconds. **M** or **M MODOS**
+opens the menu. Choosing a mode always starts a new game. The menu and help
+pause the simulation and timer. **R** restarts the current mode and its timer.
+Delivering all three aliens or running out of time stops the round and displays
+the result. Use **R** to retry, **M** to choose another mode or **Esc** to exit.
 
 ## 2. Setup and execution
 
@@ -80,6 +97,7 @@ zoom and `Esc` exits. The simulator uses the controls in the next section.
 | Help | `H`, `F1` or the **H AJUDA** button |
 | Debug views | `D` |
 | Reset the scene and camera | `R` or the **R REINICIAR** button |
+| Open the mode menu | `M` or the **M MODOS** button |
 | Exit | `Esc` or close the window |
 
 Letter keys work in both uppercase and lowercase. For 5° and 1° increments,
@@ -110,7 +128,7 @@ is highlighted in the collection. Clicking empty space or a surface that
 blocks a prize clears the selection. Highlighting does not extend the claw's reach.
 
 **Crew:** displays the count and states `Disponivel` (available), `Na garra`
-(held by the claw), `Em queda` (falling) or `Entregue` (delivered). A delivered
+(held by the claw), `Em movimento` (moving) or `Entregue` (delivered). A delivered
 prize remains visible in the tray but cannot be captured again. Its label in
 the scene disappears to avoid obscuring other prizes.
 
@@ -159,14 +177,15 @@ limits. This mode is useful for studying the simulation and is not required to p
   let you look inside, but they still bound the playing area.
 - Some boxes are larger than the visible shape when parts are tilted.
   Movement may be blocked slightly before apparent contact.
-- Opening releases the prize at its current position; it falls vertically and
-  keeps its orientation, without bouncing or rolling. Outside the tray, it
-  remains available on the floor or another support. This earns no points.
-- To count, the prize must land directly on the tray and fit entirely inside
+- Opening releases the prize at its current position with the arm's velocity.
+  It keeps its orientation, falls under gravity and bounces off the floor,
+  cabinet, arm and other aliens. Difficulty controls bounce strength and damping.
+  Wait for `Disponivel` before trying to recapture a moving alien.
+- To count, the prize must settle directly on the tray and fit entirely inside
   it. Passing over it while held does not count. Landing partly on the edge
   or on another prize does not count either.
 - Delivery is irreversible until reset. Each prize increments the count once.
-- `R` restores prizes, angles, selection, count, camera and active joint.
+- `R` restores prizes, angles, selection, count, camera, active joint and the current mode's timer.
   Your current help and debug visibility preferences are preserved.
 
 ## 6. Troubleshooting
@@ -195,8 +214,8 @@ and some tilted positions do not fit the claw. Reposition the claw or use `R`.
 Resetting always returns all three prizes to usable positions.
 
 **A prize is in the tray, but there is no point:** it must be released,
-resting directly on the tray and entirely inside it. A stack or the edge
-does not count as a delivery.
+resting directly on the tray, stationary and entirely inside it. Wait for
+the bounces to stop. A stack or the edge does not count as a delivery.
 
 **Text is too small or overlaps:** enlarge the window to 1280 × 800.
 Interface text omits accents for compatibility with freeglut's bitmap font;
@@ -208,9 +227,11 @@ This is an educational forward kinematics simulation. It does not include IK,
 realistic finger physics, self-collision between segments, plush deformation,
 sound, persistence between runs or saved games. The camera may show the back
 of parts; there is no transparent glass or cast shadows.
+Collisions use conservative boxes and do not rotate aliens.
 
-All three paths in the table were verified with collisions enabled. Run
-the logic and memory tests with `make test` and `make sanitize`.
+Tests cover delivery of all three aliens in every mode, bounces, collisions
+between prizes, timeout, reset and allocation failures. Run the logic and
+memory tests with `make test` and `make sanitize`.
 
 To reproduce the automated verification session:
 

@@ -58,6 +58,8 @@ int main(void) {
     fail_at = 0;
     m = machine_create();
     CHECK(m);
+    CHECK(machine_start(m, MODE_HARD));
+    m->time_remaining = 42;
     SceneNode *root = m->root;
     m->selected = 1;
     size_t baseline = live;
@@ -67,16 +69,28 @@ int main(void) {
         CHECK(!machine_reset(m));
         CHECK(m->root == root);
         CHECK(m->selected == 1);
+        CHECK(m->mode == MODE_HARD && m->time_remaining == 42);
         CHECK(live == baseline);
         CHECK(machine_pose_valid(m));
     }
     fail_at = 0;
+    for (size_t i = 1; i <= total; ++i) {
+        calls = 0;
+        fail_at = i;
+        CHECK(!machine_start(m, MODE_EASY));
+        CHECK(m->root == root && m->selected == 1);
+        CHECK(m->mode == MODE_HARD && m->time_remaining == 42);
+        CHECK(live == baseline);
+    }
+    fail_at = 0;
     CHECK(machine_reset(m));
     CHECK(m->selected == -1);
+    CHECK(m->mode == MODE_HARD && m->time_remaining == GAME_MODES[MODE_HARD].time_limit);
     CHECK(live == baseline);
     machine_destroy(m);
     CHECK(live == 0);
-    printf("PASS: failure at all %zu allocations during creation and reset; no abandoned owners\n",
+    printf("PASS: failure at all %zu allocations during creation, reset and mode changes; no "
+           "abandoned owners\n",
            total);
     return EXIT_SUCCESS;
 }

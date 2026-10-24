@@ -318,6 +318,171 @@ static void test_occlusion_and_cargo(void) {
     CHECK(machine_capture_candidate(m, NULL) == -1);
     machine_destroy(m);
 }
+static void place_prize(PrizeMachine *m, int p, Vec3 position, Vec3 velocity) {
+    m->prizes[p].node->local = mat4_mul(mat4_translate(position), mat4_scale(vec3(.5f, .5f, .5f)));
+    scene_update(m->prizes[p].node, mat4_identity());
+    m->prizes[p].state = PRIZE_FALLING;
+    m->prizes[p].velocity = velocity;
+}
+static void test_modes_and_clock(void) {
+    PrizeMachine *m = machine_create();
+    CHECK(m && m->mode == MODE_SANDBOX && m->round == ROUND_PLAYING);
+    advance(m, 5);
+    CHECK(m->time_remaining == 0 && m->round == ROUND_PLAYING);
+    for (int mode = MODE_EASY; mode < MODE_COUNT; ++mode) {
+        CHECK(machine_start(m, (GameMode)mode));
+        CHECK(near(m->time_remaining, GAME_MODES[mode].time_limit));
+        machine_update(m, 5); /* Real clock time is not capped with physics. */
+        CHECK(near(m->time_remaining, GAME_MODES[mode].time_limit - 5));
+        float time = m->time_remaining;
+        machine_update(m, NAN);
+        machine_update(m, -1);
+        CHECK(m->time_remaining == time);
+        SceneNode *root = m->root;
+        CHECK(!machine_start(m, MODE_COUNT));
+        CHECK(m->root == root && m->time_remaining == time);
+        m->time_remaining = .02f;
+        machine_target_joint(m, 0, 20);
+        machine_update(m, .1f);
+        CHECK(m->round == ROUND_LOST && m->time_remaining == 0);
+        float angle = m->arm.angle[0], target_before = m->arm.target[0];
+        machine_target_joint(m, 0, -50);
+        machine_close(m);
+        machine_open(m);
+        machine_update(m, 1);
+        CHECK(m->arm.angle[0] == angle && m->arm.target[0] == target_before);
+        CHECK(m->arm.opening == MACHINE_CONFIG.finger_max);
+        CHECK(machine_capture_candidate(m, NULL) == -1);
+        CHECK(machine_reset(m));
+        CHECK(m->mode == (GameMode)mode && m->round == ROUND_PLAYING);
+        CHECK(m->time_remaining == GAME_MODES[mode].time_limit && m->bounces == 0);
+    }
+    machine_destroy(m);
+}
+static void test_bouncing_prizes(void) {
+    PrizeMachine *m = machine_create();
+    CHECK(m);
+    float previous_rebound = 0;
+    for (int mode = MODE_SANDBOX; mode < MODE_COUNT; ++mode) {
+        CHECK(machine_start(m, (GameMode)mode));
+        place_prize(m, 0, vec3(-1, 2, -2), vec3(0, 0, 0));
+        float rebound = 0;
+        for (int i = 0; i < 300; ++i) {
+            machine_update(m, 1.0f / 240);
+            if (m->prizes[0].velocity.y > 0) {
+                rebound = m->prizes[0].velocity.y;
+                break;
+            }
+        }
+        CHECK(rebound > previous_rebound);
+        previous_rebound = rebound;
+        CHECK(m->bounces > 0 && m->delivered == 0);
+        advance(m, 12);
+        CHECK(m->prizes[0].state == PRIZE_AVAILABLE);
+        CHECK(near(scene_bounds(m->prizes[0].node).min.y, 0));
+    }
+    CHECK(machine_start(m, MODE_HARD));
+    place_prize(m, 0, vec3(-1, 1, -2), vec3(2, 0, 0));
+    place_prize(m, 1, vec3(-.25f, 1, -2), vec3(-1, 0, 0));
+    advance(m, .15f);
+    CHECK(m->prizes[0].velocity.x < 0 && m->prizes[1].velocity.x > 0);
+    CHECK(near(m->prizes[0].velocity.x + m->prizes[1].velocity.x, 1));
+    CHECK(!aabb_overlap(scene_bounds(m->prizes[0].node), scene_bounds(m->prizes[1].node), .001f));
+    CHECK(m->bounces > 0);
+    CHECK(machine_reset(m));
+    place_prize(m, 0, vec3(3, 2.8f, 1.5f), vec3(100, 0, 0));
+    machine_update(m, 1.0f / 120);
+    CHECK(scene_bounds(m->prizes[0].node).max.x <= MACHINE_CONFIG.workspace.max.x + .001f);
+    CHECK(m->prizes[0].velocity.x < 0);
+    CHECK(machine_reset(m));
+    SceneNode *barrier = m->solids[5].node;
+    barrier->local =
+        mat4_mul(mat4_translate(vec3(1.5f, 2.5f, -1.5f)), mat4_scale(vec3(.02f, 1, 1)));
+    scene_update(barrier, mat4_identity());
+    place_prize(m, 0, vec3(0, 2.5f, -1.5f), vec3(1000, 0, 0));
+    machine_update(m, 1.0f / 240);
+    CHECK(scene_bounds(m->prizes[0].node).max.x <= scene_bounds(barrier).min.x + .001f);
+    CHECK(m->prizes[0].velocity.x < 0);
+    CHECK(machine_reset(m));
+    place_prize(m, 0, vec3(0, 2, 2.5f), vec3(0, 0, 0));
+    for (int i = 0; i < 600 && m->bounces == 0; ++i)
+        machine_update(m, 1.0f / 120);
+    CHECK(m->bounces > 0);
+    CHECK(m->delivered == 0 && m->prizes[0].state == PRIZE_FALLING);
+    advance(m, 12);
+    CHECK(m->delivered == 1 && m->prizes[0].state == PRIZE_DELIVERED);
+    place_prize(m, 1, vec3(0, 2, 2.5f), vec3(0, 0, 0));
+    advance(m, 12);
+    CHECK(m->delivered == 1 && m->prizes[1].state == PRIZE_AVAILABLE);
+    CHECK(machine_reset(m));
+    place_prize(m, 0, vec3(1.4f, 2, 2.5f), vec3(0, 0, 0));
+    advance(m, 12);
+    CHECK(m->delivered == 0 && m->prizes[0].state == PRIZE_AVAILABLE);
+    machine_destroy(m);
+}
+static void test_release_velocity(void) {
+    PrizeMachine *m = machine_create();
+    CHECK(m);
+    pickup(m, 1);
+    machine_target_joint(m, 0, -25);
+    for (int i = 0; i < 600 && !machine_at_target(m); ++i)
+        machine_update(m, 1.0f / 60);
+    CHECK(machine_at_target(m));
+    machine_open(m); /* Release on the exact frame the target is reached. */
+    check_vec(m->prizes[1].velocity, vec3(0, 0, 0));
+    CHECK(machine_reset(m));
+    pickup(m, 1);
+    machine_target_joint(m, 0, -25);
+    machine_update(m, 1.0f / 60);
+    CHECK(!machine_at_target(m));
+    Vec3 moving = m->held_velocity;
+    CHECK(v3_length(moving) > .1f);
+    machine_open(m);
+    check_vec(m->prizes[1].velocity, moving);
+    machine_destroy(m);
+}
+static void wait_for_arm(PrizeMachine *m) {
+    for (int i = 0; i < 1200 && !machine_at_target(m) && m->round == ROUND_PLAYING; ++i)
+        machine_update(m, 1.0f / 120);
+    CHECK(machine_at_target(m));
+    CHECK(m->round == ROUND_PLAYING);
+}
+static void timed_target(PrizeMachine *m, int joint, float angle) {
+    machine_target_joint(m, joint, angle);
+    wait_for_arm(m);
+    CHECK(near(m->arm.angle[joint], angle));
+}
+static void test_timed_routes(void) {
+    PrizeMachine *m = machine_create();
+    CHECK(m);
+    for (int mode = MODE_EASY; mode < MODE_COUNT; ++mode) {
+        CHECK(machine_start(m, (GameMode)mode));
+        for (int p = 0; p < PRIZE_COUNT; ++p) {
+            timed_target(m, 0, MACHINE_CONFIG.prize_yaw[p]);
+            timed_target(m, 3, -50);
+            timed_target(m, 1, -45);
+            machine_close(m);
+            wait_for_arm(m);
+            CHECK(m->held == p);
+            timed_target(m, 1, -25);
+            timed_target(m, 3, -70);
+            timed_target(m, 0, MACHINE_CONFIG.drop_yaw[p]);
+            machine_open(m);
+            for (int i = 0;
+                 i < 2400 && m->prizes[p].state != PRIZE_DELIVERED && m->round == ROUND_PLAYING;
+                 ++i)
+                machine_update(m, 1.0f / 120);
+            CHECK(m->prizes[p].state == PRIZE_DELIVERED);
+            CHECK(m->delivered == p + 1);
+            CHECK(m->time_remaining > 0);
+        }
+        CHECK(m->round == ROUND_WON && m->blocked_moves == 0 && m->bounces > 0);
+        float time = m->time_remaining;
+        advance(m, 2);
+        CHECK(m->time_remaining == time && m->delivered == PRIZE_COUNT);
+    }
+    machine_destroy(m);
+}
 int main(void) {
     test_math();
     test_free_camera();
@@ -326,6 +491,10 @@ int main(void) {
     test_full_game();
     test_limits_collision_time();
     test_occlusion_and_cargo();
+    test_modes_and_clock();
+    test_bouncing_prizes();
+    test_release_velocity();
+    test_timed_routes();
     printf(
         "PASS: %d checks (math, camera, ownership, FK, picking, collisions, 3 deliveries, reset)\n",
         checks);
