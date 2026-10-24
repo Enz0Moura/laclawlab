@@ -7,13 +7,10 @@ de prêmios, usando **OpenGL e freeglut**. O braço tem base, ombro, cotovelo, p
 e dois dedos articulados. Controle as juntas, capture três alienígenas e solte-os na
 bandeja. A captura é determinística; não há limite de tempo.
 
-O visual é inspirado na máquina do **Pizza Planet, de Toy Story**, conforme a
-referência enviada: foguete vermelho/amarelo, aletas, estrelas e alienígenas
-verdes de três olhos. As formas são geradas em C, sem modelos ou texturas externos.
+O visual é inspirado na máquina do **Pizza Planet, de Toy Story**.
 
 Projeto para o **cenário 3 — Simulador de Braço Robótico**, CG 2026/2,
-CEFET/RJ, UnED Petrópolis. Os requisitos foram extraídos do briefing recebido;
-o PDF original não foi fornecido. IK é opcional e não foi implementada.
+CEFET/RJ, UnED Petrópolis. IK não foi implementada.
 
 A arquitetura segue os padrões de `Geometry`, base incorporada, métodos com
 `self` e fábricas de

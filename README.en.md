@@ -7,14 +7,10 @@ with **OpenGL and freeglut**. The arm has a base, shoulder, elbow, wrist and
 two articulated fingers. Control the joints, capture three aliens and release
 them into the delivery tray. Capture is deterministic; there is no time limit.
 
-The visuals are inspired by the **Pizza Planet claw machine from Toy Story**,
-following the supplied reference: a red and yellow rocket, fins, stars and
-green aliens with three eyes. All shapes are generated in C, without external
-models or textures.
+The visuals are inspired by the **Pizza Planet claw machine from Toy Story**.
 
 Developed for **scenario 3 — Robotic Arm Simulator**, CG 2026/2,
-CEFET/RJ, UnED Petrópolis. Requirements were taken from the supplied brief;
-the original PDF was not provided. IK is optional and has not been implemented.
+CEFET/RJ, UnED Petrópolis.
 
 The architecture follows the `Geometry`, embedded base struct, methods with
 `self` and factory patterns from
