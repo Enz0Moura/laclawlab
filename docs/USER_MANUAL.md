@@ -137,59 +137,7 @@ of rejected moves. The pink box marks the tolerance for the prize's **center**.
 The green volume marks the delivery region. The outer box marks the cabinet
 limits. This mode is useful for studying the simulation and is not required to play.
 
-## 5. First delivery, step by step
-
-This sequence was exercised by the tests and the graphical session. Start
-with `R` and close help. **Wait for each angle to finish changing**. Do not
-adjust the elbow: it stays at −85°. Negative signs are part of the values.
-
-1. Click the **Coral** alien, identified by the coral label near the front. Check its outline.
-2. Press `1` and tap `-` **8 times**. The base moves from 0° to **−40°**.
-3. Press `4` and tap `+` (or `=`) **4 times**. The wrist moves to **−50°**.
-4. Press `2` and tap `-` **4 times**. The shoulder moves to **−45°**.
-   The open claw surrounds the prize; `Captura possivel` appears.
-5. Press `C`. Wait for `Premio capturado!` (prize captured) and the `Na garra` state.
-6. Press `2` and tap `+` **4 times**. The shoulder rises to **−25°**, lifting the prize.
-7. Press `4` and tap `-` **4 times**. The wrist returns to **−70°**.
-8. Press `1` and tap `-` **7 times**. The base moves from −40° to **−75°**,
-   positioning the load above the right-hand space in the tray.
-9. Press `O`. The prize falls vertically and stops on the tray.
-   The count changes to **1/3** after contact. Wait for the claw to open to 40°.
-
-The arm does not use selection to reach an object. Selecting another alien
-does not replace the adjustments in the walkthrough. If something goes wrong,
-press `R` and repeat the sequence; the camera and angles return to their initial state.
-
-### Deliver the other two without resetting
-
-Repeat the same order: base to pickup → wrist −50° → shoulder −45° → close →
-shoulder −25° → wrist −70° → base to delivery → open and wait.
-
-| Prize | Base at pickup | Base at delivery | Elbow |
-| --- | ---: | ---: | ---: |
-| Coral | −40° | −75° | −85° |
-| Azul | 0° | −90° | −85° |
-| Amarelo | 40° | −105° | −85° |
-
-After Coral, select Azul and increase the base from −75° to 0°: **15 taps**
-on `+`. After lifting Azul, move from 0° to −90°: **18 taps** on `-`.
-
-After Azul, select Amarelo and increase the base from −90° to 40°:
-**26 taps** on `+`. After lifting Amarelo, move from 40° to −105°:
-**29 taps** on `-`.
-
-The different delivery positions leave room for all three aliens. Releasing
-them all in exactly the same place can stack them; an alien resting on another
-does not count as delivered. Use the three spaces and the table above.
-
-### Try a collision
-
-Press `R`, then `2`, and hold `←`. Continuing to lower the shoulder eventually
-gets blocked; the joint stops before −85°. Enable `D` to see the boxes and
-the rejected move counter. Press `R` to restart the walkthrough. The camera
-can pass through the cabinet; it is only a viewpoint.
-
-## 6. Game rules
+## 5. Game rules
 
 - Capture requires an empty claw, an available prize near the claw's center,
   a compatible size and an unobstructed path. Closing far away captures nothing.
@@ -212,7 +160,7 @@ can pass through the cabinet; it is only a viewpoint.
 - `R` restores prizes, angles, selection, count, camera and active joint.
   Your current help and debug visibility preferences are preserved.
 
-## 7. Troubleshooting
+## 6. Troubleshooting
 
 **“GL/freeglut.h: No such file” or “cannot find -lglut”:** the freeglut headers
 or library are missing. Install the packages from section 2 and build again.
@@ -245,7 +193,7 @@ does not count as a delivery.
 Interface text omits accents for compatibility with freeglut's bitmap font;
 this does not indicate an installation problem.
 
-## 8. Limitations and verification
+## 7. Limitations and verification
 
 This is an educational forward kinematics simulation. It does not include IK,
 realistic finger physics, self-collision between segments, plush deformation,

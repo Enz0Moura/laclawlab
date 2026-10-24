@@ -29,9 +29,7 @@ No CachyOS/Arch, os pacotes necessários podem ser instalados com:
 sudo pacman -S --needed base-devel freeglut libglvnd
 ```
 
-Essas dependências já estavam instaladas durante o desenvolvimento; o comando
-acima indica como obtê-las. Abra um terminal **na pasta do projeto**, aquela que
-contém `Makefile`, e execute:
+Abra um terminal **na pasta do projeto** e execute:
 
 ```sh
 make
@@ -84,7 +82,7 @@ A ajuda aberta impede selecionar objetos atrás do painel de ajuda.
 
 ## 4. O que aparece na tela
 
-**Cena:** a máquina tem o tema Pizza Planet, inspirado na referência de Toy Story:
+**Cena:** a máquina tem o tema Pizza Planet, inspirado em Toy Story:
 foguete vermelho, topo amarelo, aletas laterais, faixa azul e estrelas. O braço
 metálico tem articulações vermelhas. Os três prêmios são alienígenas verdes de
 três olhos, antena e uniforme azul. **Coral, Azul e Amarelo** identificam suas
@@ -129,59 +127,7 @@ de movimentos rejeitados. A caixa rosa marca a tolerância para o **centro** do
 prêmio. O volume verde marca a entrega. A caixa externa marca os limites da
 cabine. Esse modo ajuda a estudar e não é necessário para jogar.
 
-## 5. Primeira entrega, passo a passo
-
-Esta sequência foi executada pelos testes e pela sessão gráfica. Faça-a a partir
-de `R`, com a ajuda fechada. **Aguarde cada ângulo terminar de mudar**. Não altere
-o cotovelo: ele permanece em −85°. Os sinais negativos fazem parte dos valores.
-
-1. Clique no alienígena **Coral**, identificado pelo rótulo coral próximo da frente. Confira seu contorno.
-2. Pressione `1` e toque `-` **8 vezes**. A base vai de 0° a **−40°**.
-3. Pressione `4` e toque `+` (ou `=`) **4 vezes**. O punho vai a **−50°**.
-4. Pressione `2` e toque `-` **4 vezes**. O ombro vai a **−45°**.
-   A garra aberta fica ao redor do prêmio; aparece `Captura possivel`.
-5. Pressione `C`. Aguarde `Premio capturado!` e o estado `Na garra`.
-6. Pressione `2` e toque `+` **4 vezes**. O ombro sobe até **−25°**, erguendo o prêmio.
-7. Pressione `4` e toque `-` **4 vezes**. O punho volta a **−70°**.
-8. Pressione `1` e toque `-` **7 vezes**. A base vai de −40° a **−75°**,
-   posicionando a carga sobre o espaço direito da bandeja.
-9. Pressione `O`. O prêmio cai verticalmente e para na bandeja.
-   A contagem passa a **1/3** após o contato. Espere a garra abrir até 40°.
-
-O braço não usa a seleção para alcançar o objeto. Por isso, selecionar outro
-alienígena não substitui os ajustes do tutorial. Se houver um erro, pressione `R`
-e repita a sequência; câmera e ângulos retornam ao início.
-
-### Entregar os outros dois sem reiniciar
-
-Repita a mesma ordem: base para coleta → punho −50° → ombro −45° → fechar →
-ombro −25° → punho −70° → base para entrega → abrir e esperar.
-
-| Prêmio | Base na coleta | Base na entrega | Cotovelo |
-| --- | ---: | ---: | ---: |
-| Coral | −40° | −75° | −85° |
-| Azul | 0° | −90° | −85° |
-| Amarelo | 40° | −105° | −85° |
-
-Depois do Coral, selecione o Azul e aumente a base de −75° até 0°: **15 toques**
-em `+`. Depois de levantar o Azul, vá de 0° até −90°: **18 toques** em `-`.
-
-Depois do Azul, selecione o Amarelo e aumente a base de −90° até 40°:
-**26 toques** em `+`. Depois de levantar o Amarelo, vá de 40° até −105°:
-**29 toques** em `-`.
-
-As diferentes posições de entrega deixam espaço para os três alienígenas.
-Soltar todos exatamente no mesmo lugar pode empilhá-los; um alienígena apoiado em
-outro não conta como entregue. Use os três espaços e a tabela acima.
-
-### Experimentar uma colisão
-
-Pressione `R`, depois `2`, e segure `←`. A tentativa de continuar abaixando o
-ombro acaba bloqueada; a junta para antes de −85°. Ative `D` para ver as caixas
-e o contador de movimentos rejeitados. Pressione `R` para começar o tutorial
-novamente. A câmera pode atravessar a cabine; ela é apenas um ponto de observação.
-
-## 6. Regras do jogo
+## 5. Regras do jogo
 
 - A captura exige garra vazia, prêmio disponível próximo do centro da garra,
   tamanho compatível e caminho desobstruído. Fechar longe não captura nada.
@@ -204,7 +150,7 @@ novamente. A câmera pode atravessar a cabine; ela é apenas um ponto de observa
 - `R` restaura prêmios, ângulos, seleção, contagem, câmera e junta ativa.
   As opções de mostrar ajuda e depuração conservam sua preferência atual.
 
-## 7. Problemas comuns
+## 6. Problemas comuns
 
 **“GL/freeglut.h: No such file” ou “cannot find -lglut”:** faltam os headers ou
 a biblioteca freeglut. Instale os pacotes da seção 2 e compile novamente.
@@ -235,7 +181,7 @@ na bandeja e totalmente dentro dela. Uma pilha ou a borda não é uma entrega.
 Os textos da interface usam caracteres sem acentos por compatibilidade com a
 fonte bitmap do freeglut; isso não indica problema na instalação.
 
-## 8. Limitações e verificações
+## 7. Limitações e verificações
 
 Esta é uma simulação didática de cinemática direta. Não inclui IK, física
 realista dos dedos, autocolisão entre segmentos, deformação de pelúcia, som,
