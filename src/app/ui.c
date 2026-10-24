@@ -68,7 +68,6 @@ static void space_background(const UserInterface *ui) {
     }
     planet_icon(68, 159, 18);
     render_text(103, 155, "PIZZA PLANET", GOLD, false);
-    render_text(103, 173, "O universo dos premios", MUTED, false);
 }
 static float panel_scale(const UserInterface *ui) {
     return cg_clamp((float)ui_view_height(ui) / 654, .65f, 1);
@@ -362,7 +361,7 @@ void ui_draw(const UserInterface *ui, const PrizeMachine *m) {
     button((float)ui->width - 155, 23, 130, ui->paused ? "P  CONTINUAR" : "P  PAUSA", false);
     render_text(25, 105,
                 ui->debug ? "DEPURACAO  /  D para ocultar"
-                          : "A GARRA ESCOLHEU VOCE. RESGATE A TRIPULACAO!",
+                          : "RESGATE A TRIPULACAO!",
                 ui->debug ? (Color){1, .6f, .2f} : MUTED, false);
     panel(ui, m);
     render_rect(0, (float)ui->height - UI_BOTTOM, (float)ui_view_width(ui), UI_BOTTOM, INK);
