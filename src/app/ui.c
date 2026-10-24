@@ -222,11 +222,11 @@ static void help(const UserInterface *ui) {
                            "4. Aproxime a garra aberta. C fecha; O abre e solta.",
                            "5. Transporte e solte na bandeja verde.",
                            "",
-                           "Camera: arraste com botao direito; roda ajusta zoom.",
-                           "Home: restaurar camera. Espaco: alternar garra.",
+                           "Camera: direito gira; roda pressionada desloca.",
+                           "F: camera livre (direito olha; roda avanca/recua).",
                            "R: reiniciar tudo. D: depuracao. Esc: sair.",
                            "H ou F1: fechar esta ajuda.",
-                           "Tutorial com angulos exatos: docs/MANUAL_DO_USUARIO.md"};
+                           "Home: restaurar camera. Espaco: alternar garra."};
     for (int i = 0; i < 12; ++i)
         render_text(x + 24, y + 72 + (float)i * 24, lines[i], i == 11 ? ACCENT : TEXT, false);
 }
@@ -258,10 +258,13 @@ void ui_draw(const UserInterface *ui, const PrizeMachine *m) {
                              ? "Captura possivel. Pressione C para fechar."
                              : "Clique em um premio. Use 1-4 e as setas para controlar o braco.";
     render_text(26, (float)ui->height - 40, status, TEXT, true);
-    render_text(26, (float)ui->height - 17,
-                "Botao direito: orbitar   /   Roda: zoom   /   Home: camera   /   H: ajuda   /   "
-                "D: depuracao",
-                MUTED, false);
+    render_text(
+        26, (float)ui->height - 17,
+        ui->free_camera
+            ? "CAMERA LIVRE / Direito: olhar / Meio: deslocar / Roda: mover / F: orbital / Home: "
+              "reset"
+            : "CAMERA ORBITAL / Direito: girar / Meio: deslocar / Roda: zoom / F: livre / H: ajuda",
+        MUTED, false);
     if (ui->debug) {
         Vec3 p = machine_grip_position(m);
         char text[120];

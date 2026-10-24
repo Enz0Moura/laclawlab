@@ -7,7 +7,7 @@
 enum { UI_PANEL_WIDTH = 316, UI_TOP = 76, UI_BOTTOM = 70 };
 typedef struct {
     int width, height, active_joint;
-    bool help, debug;
+    bool help, debug, free_camera;
     Camera camera;
 } UserInterface;
 void ui_draw(const UserInterface *ui, const PrizeMachine *machine);

@@ -67,6 +67,8 @@ pai. Nesse exemplo, as setas controlam a câmera, `+`/`-` controlam o zoom e
 | Abrir e soltar o prêmio | `O` ou botão **O ABRIR** |
 | Alternar fechar / abrir | `Espaço` |
 | Girar a câmera | Arraste com o botão direito na cena |
+| Deslocar a câmera lateralmente e na vertical | Arraste com a roda pressionada (botão do meio) |
+| Alternar câmera orbital / livre | `F` |
 | Aproximar / afastar a câmera | Roda do mouse na cena |
 | Restaurar a câmera | `Home` |
 | Ajuda | `H`, `F1` ou botão **H AJUDA** |
@@ -79,6 +81,13 @@ pressione e solte a tecla a cada passo; segurar `+` não repete os passos.
 Use as setas para movimento contínuo. Soltá-las interrompe esse movimento.
 Os botões da câmera e da seleção são diferentes para não misturar as ações.
 A ajuda aberta impede selecionar objetos atrás do painel de ajuda.
+
+No modo livre, arraste com o botão direito para olhar ao redor a partir da
+posição atual; a roda avança ou recua na direção da visão. A roda pressionada
+desloca a câmera nos dois modos. Inicie os gestos dentro da cena; o painel e
+a ajuda não iniciam movimentos da câmera. Soltar o botão encerra o gesto.
+`Home` e `R` restauram a posição inicial e o modo orbital. A câmera livre
+pode atravessar a cabine e olhar abaixo da linha do horizonte.
 
 ## 4. O que aparece na tela
 

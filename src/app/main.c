@@ -11,7 +11,8 @@
 static PrizeMachine *machine;
 static UserInterface ui;
 static int last_time, drag_x, drag_y, held_direction;
-static bool dragging, smoke;
+static bool smoke;
+static int drag_button = -1;
 static const char *screenshot;
 static int exit_code = EXIT_SUCCESS, smoke_phase, smoke_prize, smoke_frames;
 static float smoke_wait;
@@ -32,9 +33,10 @@ static void reset(void) {
         return;
     }
     ui.camera = camera_default();
+    ui.free_camera = false;
     ui.active_joint = 0;
     held_direction = 0;
-    dragging = false;
+    drag_button = -1;
 }
 static void key(unsigned char k, int x, int y) {
     (void)x;
@@ -83,6 +85,10 @@ static void key(unsigned char k, int x, int y) {
     case 'd':
         ui.debug = !ui.debug;
         break;
+    case 'f':
+        ui.free_camera = !ui.free_camera;
+        drag_button = -1;
+        break;
     default:
         break;
     }
@@ -95,8 +101,11 @@ static void special(int k, int x, int y) {
         held_direction = -1;
     if (k == GLUT_KEY_RIGHT)
         held_direction = 1;
-    if (k == GLUT_KEY_HOME)
+    if (k == GLUT_KEY_HOME) {
         ui.camera = camera_default();
+        ui.free_camera = false;
+        drag_button = -1;
+    }
     if (k == GLUT_KEY_F1)
         ui.help = !ui.help;
 }
@@ -110,9 +119,12 @@ static void special_up(int k, int x, int y) {
     }
 }
 static void mouse(int button, int state, int x, int y) {
-    if (button == GLUT_RIGHT_BUTTON) {
-        dragging = state == GLUT_DOWN && x < ui_view_width(&ui) && y >= UI_TOP &&
-                   y < ui.height - UI_BOTTOM;
+    if (button == GLUT_RIGHT_BUTTON || button == GLUT_MIDDLE_BUTTON) {
+        if (state == GLUT_UP && drag_button == button)
+            drag_button = -1;
+        if (state == GLUT_DOWN && !ui.help && x >= 0 && x < ui_view_width(&ui) && y >= UI_TOP &&
+            y < ui.height - UI_BOTTOM)
+            drag_button = button;
         drag_x = x;
         drag_y = y;
         return;
@@ -137,20 +149,31 @@ static void mouse(int button, int state, int x, int y) {
     }
 }
 static void motion(int x, int y) {
-    if (dragging)
-        camera_orbit(&ui.camera, -(float)(x - drag_x) * .35f, (float)(y - drag_y) * .25f);
+    float dx = (float)(x - drag_x), dy = (float)(y - drag_y);
+    if (drag_button == GLUT_MIDDLE_BUTTON)
+        camera_pan(&ui.camera, dx, dy, ui_view_height(&ui));
+    else if (drag_button == GLUT_RIGHT_BUTTON) {
+        if (ui.free_camera)
+            camera_look(&ui.camera, -dx * .35f, -dy * .25f);
+        else
+            camera_orbit(&ui.camera, -dx * .35f, dy * .25f);
+    }
     drag_x = x;
     drag_y = y;
 }
 static void wheel(int wheel_number, int direction, int x, int y) {
     (void)wheel_number;
-    if (x < ui_view_width(&ui) && y >= UI_TOP && y < ui.height - UI_BOTTOM)
-        camera_zoom(&ui.camera, -(float)direction * .6f);
+    if (!ui.help && x >= 0 && x < ui_view_width(&ui) && y >= UI_TOP && y < ui.height - UI_BOTTOM) {
+        if (ui.free_camera)
+            camera_dolly(&ui.camera, (float)direction * .6f);
+        else
+            camera_zoom(&ui.camera, -(float)direction * .6f);
+    }
 }
 static void entry(int state) {
     if (state == GLUT_LEFT) {
         held_direction = 0;
-        dragging = false;
+        drag_button = -1;
     }
 }
 static void reshape(int width, int height) {
@@ -239,14 +262,47 @@ static void smoke_step(float dt) {
         }
         pending_capture = "build/smoke_delivery.ppm";
         break;
-    case 9:
+    case 9: {
+        Camera before = ui.camera;
+        int selected = machine->selected;
+        mouse(GLUT_MIDDLE_BUTTON, GLUT_DOWN, 300, 300);
+        motion(340, 320);
+        mouse(GLUT_MIDDLE_BUTTON, GLUT_UP, 340, 320);
+        if (v3_length(v3_sub(ui.camera.target, before.target)) < .01f ||
+            machine->selected != selected) {
+            quit_failure("middle-button pan");
+            return;
+        }
+        Vec3 released = ui.camera.target;
+        motion(390, 330);
+        if (v3_length(v3_sub(released, ui.camera.target)) > .001f) {
+            quit_failure("released camera drag");
+            return;
+        }
+        key('f', 0, 0);
+        Vec3 eye = camera_eye(&ui.camera);
+        mouse(GLUT_RIGHT_BUTTON, GLUT_DOWN, 300, 300);
+        motion(390, 330);
+        mouse(GLUT_RIGHT_BUTTON, GLUT_UP, 390, 330);
+        if (!ui.free_camera || v3_length(v3_sub(eye, camera_eye(&ui.camera))) > .001f) {
+            quit_failure("free-look eye position");
+            return;
+        }
+        wheel(0, 1, 300, 300);
+        if (v3_length(v3_sub(eye, camera_eye(&ui.camera))) < .5f) {
+            quit_failure("free camera dolly");
+            return;
+        }
+        special(GLUT_KEY_HOME, 0, 0);
+    }
         mouse(GLUT_RIGHT_BUTTON, GLUT_DOWN, 300, 300);
         motion(390, 330);
         mouse(GLUT_RIGHT_BUTTON, GLUT_UP, 390, 330);
         wheel(0, 1, 300, 300);
         special(GLUT_KEY_HOME, 0, 0);
         key('d', 0, 0);
-        if (!ui.debug || fabsf(ui.camera.distance - camera_default().distance) > .001f) {
+        if (!ui.debug || ui.free_camera ||
+            fabsf(ui.camera.distance - camera_default().distance) > .001f) {
             quit_failure("camera/debug");
             return;
         }
@@ -332,7 +388,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Sem memoria para construir a cena.\n");
         return EXIT_FAILURE;
     }
-    ui = (UserInterface){1280, 800, 0, false, false, camera_default()};
+    ui = (UserInterface){.width = 1280, .height = 800, .camera = camera_default()};
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(ui.width, ui.height);

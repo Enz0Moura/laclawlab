@@ -73,6 +73,8 @@ zoom and `Esc` exits. The simulator uses the controls in the next section.
 | Open and release the prize | `O` or the **O ABRIR** button |
 | Toggle close / open | `Space` |
 | Orbit the camera | Drag with the right mouse button in the scene |
+| Pan the camera horizontally and vertically | Drag while pressing the wheel (middle mouse button) |
+| Toggle orbital / free camera | `F` |
 | Zoom in / out | Mouse wheel in the scene |
 | Reset the camera | `Home` |
 | Help | `H`, `F1` or the **H AJUDA** button |
@@ -85,6 +87,13 @@ press and release the key for each step; holding `+` does not repeat the steps.
 Use the arrow keys for continuous movement. Releasing them stops that movement.
 Camera and selection actions use different mouse buttons to avoid mixing them.
 While help is open, objects behind the help panel cannot be selected.
+
+In free mode, drag with the right mouse button to look around from the current
+position; scrolling moves forward or backward along the viewing direction.
+Middle-button dragging pans in both modes. Start gestures inside the scene;
+the panel and help overlay do not start camera movement. Releasing the button
+ends the gesture. `Home` and `R` restore the initial position and orbital mode.
+The free camera can pass through the cabinet and look below the horizon.
 
 ## 4. What appears on screen
 

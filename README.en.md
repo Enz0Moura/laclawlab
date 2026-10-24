@@ -40,6 +40,8 @@ use **←/→** or **+/−**; **C** closes, **O** opens, **H** shows help.
 The right mouse button and wheel control the camera. **R** resets; **D** toggles
 debug views. The simulator's interface is in Portuguese; the English manual
 explains its labels while preserving the actual names and key bindings.
+Drag with the middle mouse button to pan. **F** toggles the free camera:
+right-drag looks around and scrolling moves forward or backward. **Home** resets the camera.
 
 ## Documentation
 

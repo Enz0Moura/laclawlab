@@ -38,6 +38,8 @@ make clean     # remove build/
 `build/libcg.a`. Para jogar: clique num prêmio; escolha a junta com **1–4**;
 use **←/→** ou **+/−**; **C** fecha, **O** abre, **H** mostra a ajuda.
 Botão direito e roda controlam a câmera. **R** reinicia; **D** mostra a depuração.
+Arraste com a roda pressionada para deslocar a visão. **F** alterna a câmera
+livre: botão direito olha ao redor e a roda avança ou recua. **Home** restaura a câmera.
 
 ## Documentação
 

@@ -69,6 +69,40 @@ static void test_math(void) {
     CHECK(v3_length(v3_cross(v3_sub(point, ray.origin), ray.direction)) < .001f);
     CHECK(!camera_ray(&c, 1, 1, 0, 0, &ray));
 }
+static void test_free_camera(void) {
+    Camera c = camera_default();
+    Vec3 point = c.target, screen, eye = camera_eye(&c), target_before = c.target;
+    CHECK(camera_project(&c, point, 960, 650, &screen));
+    camera_pan(&c, 80, -35, 650);
+    Vec3 moved;
+    CHECK(camera_project(&c, point, 960, 650, &moved));
+    CHECK(near(moved.x - screen.x, 80));
+    CHECK(near(moved.y - screen.y, -35));
+    check_vec(v3_sub(camera_eye(&c), eye), v3_sub(c.target, target_before));
+    Vec3 target = c.target;
+    camera_pan(&c, 80, 20, 0);
+    camera_pan(&c, NAN, 20, 650);
+    check_vec(c.target, target);
+    eye = camera_eye(&c);
+    camera_look(&c, 38, -60);
+    check_vec(camera_eye(&c), eye);
+    CHECK(c.pitch < 0);
+    Ray ray;
+    CHECK(camera_ray(&c, 480, 325, 960, 650, &ray));
+    CHECK(v3_dot(ray.direction, v3_normalize(v3_sub(c.target, eye))) > .999f);
+    camera_dolly(&c, 2);
+    CHECK(near(v3_length(v3_sub(camera_eye(&c), eye)), 2));
+    CHECK(near(c.distance, camera_default().distance));
+    camera_dolly(&c, -2);
+    check_vec(camera_eye(&c), eye);
+    camera_look(&c, 720, 1000);
+    CHECK(near(c.pitch, 89));
+    CHECK(camera_ray(&c, 480, 325, 960, 650, &ray));
+    camera_look(&c, 0, -1000);
+    CHECK(near(c.pitch, -89));
+    CHECK(camera_ray(&c, 480, 325, 960, 650, &ray));
+    check_vec(camera_eye(&c), eye);
+}
 static void test_scene(void) {
     Box *box = BoxFabric.create((Color){1, 0, 0});
     Cylinder *cylinder = CylinderFabric.create((Color){0, 1, 0}, 16);
@@ -286,6 +320,7 @@ static void test_occlusion_and_cargo(void) {
 }
 int main(void) {
     test_math();
+    test_free_camera();
     test_scene();
     test_mesh_contract();
     test_full_game();
