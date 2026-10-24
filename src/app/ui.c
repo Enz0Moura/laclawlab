@@ -298,10 +298,10 @@ static void menu(const UserInterface *ui) {
     render_text(first.x, 112, "ESCOLHA SUA MISSAO", GOLD, true);
     render_text(first.x, 143, "Resgate os 3 aliens. Clique em um modo ou pressione 1-4.", TEXT,
                 false);
-    const char *descriptions[] = {"Sem limite de tempo. Quiques suaves para praticar.",
-                                  "4 minutos. Quiques leves e parada mais rapida.",
-                                  "3 minutos. Quiques mais altos exigem cuidado.",
-                                  "2 minutos. Quiques fortes: planeje cada entrega."};
+    const char *descriptions[] = {"Sem limite. Posicoes pouco variadas; quiques suaves.",
+                                  "4 min. Pequena variacao de posicao; quiques leves.",
+                                  "3 min. Distancias variadas; quiques moderados.",
+                                  "2 min. Maior variacao de posicao; quiques fortes."};
     const Color colors[] = {
         {.69f, .91f, .24f}, {.24f, .80f, .74f}, {1, .81f, .18f}, {1, .32f, .30f}};
     for (int i = 0; i < MODE_COUNT; ++i) {
@@ -315,7 +315,7 @@ static void menu(const UserInterface *ui) {
     }
     UIRect last = ui_mode_rect(ui, MODE_COUNT - 1);
     render_text(first.x, last.y + last.h + 36,
-                "Escolher um modo inicia uma nova partida. Esc: sair.", MUTED, false);
+                "Nova partida e reset sorteiam as posicoes. Esc: sair.", MUTED, false);
 }
 static void round_result(const UserInterface *ui, const PrizeMachine *m) {
     float w = fminf(640, (float)ui_view_width(ui) - 40);

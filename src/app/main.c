@@ -62,6 +62,7 @@ static void cleanup(void) {
 static void quit_failure(const char *why) {
     fprintf(stderr, "FAIL graphical smoke: %s\n", why);
     if (machine) {
+        fprintf(stderr, "mode %d spawn seed %u\n", machine->mode, (unsigned)machine->spawn_seed);
         for (int p = 0; p < PRIZE_COUNT; ++p) {
             Vec3 pos = mat4_point(machine->prizes[p].node->world, vec3(0, 0, 0));
             Vec3 v = machine->prizes[p].velocity;
@@ -288,6 +289,9 @@ static void smoke_target(int joint, float value) {
     int steps = (int)lroundf((value - machine->arm.target[joint]) / 5);
     for (int i = 0; i < abs(steps); ++i)
         key(steps > 0 ? '+' : '-', 0, 0);
+    int fine = (int)lroundf(value - machine->arm.target[joint]);
+    for (int i = 0; i < abs(fine); ++i)
+        key(fine > 0 ? ']' : '[', 0, 0);
 }
 static bool same_camera(Camera a, Camera b) {
     return v3_length(v3_sub(a.target, b.target)) < .001f && fabsf(a.yaw - b.yaw) < .001f &&
@@ -489,14 +493,14 @@ static void smoke_step(float dt) {
             quit_failure("mouse picking");
             return;
         }
-        smoke_target(0, MACHINE_CONFIG.prize_yaw[smoke_prize]);
+        smoke_target(0, machine->prizes[smoke_prize].pickup_pose[0]);
         break;
     }
     case 1:
-        smoke_target(3, -50);
+        smoke_target(3, machine->prizes[smoke_prize].pickup_pose[3]);
         break;
     case 2:
-        smoke_target(1, -45);
+        smoke_target(1, machine->prizes[smoke_prize].pickup_pose[1]);
         break;
     case 3:
         key('c', 0, 0);
@@ -624,18 +628,22 @@ static void smoke_step(float dt) {
         }
         pending_capture = "build/smoke_timeout.ppm";
         break;
-    case 14:
+    case 14: {
+        uint32_t previous_seed = machine->spawn_seed;
         key('p', 0, 0);
         smoke_pause_click(1);
         if (machine->round != ROUND_PLAYING || machine->mode != MODE_HARD ||
-            machine->time_remaining != GAME_MODES[MODE_HARD].time_limit) {
+            machine->time_remaining != GAME_MODES[MODE_HARD].time_limit ||
+            machine->spawn_seed == previous_seed) {
             quit_failure("retry same difficulty");
             return;
         }
         puts("prize_machine: graphical session passed (pause/resume, frozen state and timer, "
-             "reset, return to modes, all 3 prizes, free camera, collision, delivery, timeout)");
+             "random spawns, reset, return to modes, all 3 prizes, free camera, collision, "
+             "delivery, timeout)");
         glutLeaveMainLoop();
         break;
+    }
     default:
         break;
     }
