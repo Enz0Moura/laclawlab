@@ -1,5 +1,9 @@
 # Manual do usuário — LaClaw Lab
 
+**Português (Brasil)** | [English](USER_MANUAL.md)
+
+[Voltar ao README](../README.md)
+
 ## 1. Objetivo
 
 Pegue os três prêmios — Coral, Azul e Amarelo — com o braço articulado e solte-os

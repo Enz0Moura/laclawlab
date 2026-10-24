@@ -1,5 +1,7 @@
 # LaClaw Lab
 
+**Português (Brasil)** | [English](README.en.md)
+
 Biblioteca de computação gráfica com OOP em **C11** e simulador 3D de uma máquina
 de prêmios, usando **OpenGL e freeglut**. O braço tem base, ombro, cotovelo, punho
 e dois dedos articulados. Controle as juntas, capture três alienígenas e solte-os na
